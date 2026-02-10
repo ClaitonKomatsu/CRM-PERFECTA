@@ -1,1 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfecta CRM - V13.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <style>
+        :root {
+            --primary: #007bff; --bg: #e9eef2; --text: #333;
+            --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+        
+        nav { background: white; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100; }
+        .brand { font-weight: bold; font-size: 1.2rem; color: var(--primary); }
+        .nav-buttons button { background: transparent; border: none; padding: 10px 15px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; font-size: 0.95rem; transition: 0.3s; }
+        .nav-buttons button:hover { background-color: #f8f9fa; }
+        .nav-buttons button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: bold; }
+
+        .view-section { display: none; flex: 1; overflow: hidden; padding: 20px; }
+        .view-section.active { display: flex; flex-direction: column; }
+        .management-container { display: flex; gap: 20px; height: 100%; }
+        
+        .form-area { width: 650px; background: white; padding: 20px; border-radius: 8px; overflow-y: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .list-area { flex: 1; background: white; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; }
+
+        label { font-weight: 600; font-size: 0.85em; display: block; margin-bottom: 4px; color: #555; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        
+        .contact-info-display { font-size: 0.75em; color: #007bff; margin-top: -10px; margin-bottom: 10px; display: block; min-height: 1em; }
+
+        /* Funil */
+        .funnel-filters { background: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; display: flex; gap: 15px; flex-wrap: wrap; font-size: 0.85em; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .funnel-filters label { margin: 0; display: flex; align-items: center; gap: 4px; font-weight: normal; }
+        
+        .board { display: flex; overflow-x: auto; gap: 10px; height: 100%; align-items: flex-start; }
+        .column { background: #f0f2f5; min-width: 210px; width: 210px; border-radius: 8px; display: flex; flex-direction: column; max-height: 100%; }
+        .column-header { padding: 10px; font-weight: bold; color: white; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; font-size: 0.9em; }
+        .column-body { padding: 8px; flex: 1; overflow-y: auto; }
+        
+        .col-novo { background: #6c757d; } .col-contatado { background: #17a2b8; } 
+        .col-orcamento { background: #ffc107; color:#333 !important; } .col-negociacao { background: #fd7e14; }
+        .col-fechado { background: #28a745; } .col-perdido { background: #dc3545; }
+
+        .card { background: white; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; border-left: 5px solid #ccc; position: relative; }
+        .card-blue { background-color: #e3f2fd !important; border-left-color: #2196f3 !important; }
+        .card-red { background-color: #ffebee !important; border-left-color: #f44336 !important; }
+        .card-yellow { background-color: #fffde7 !important; border-left-color: #fbc02d !important; }
+        .card-green { background-color: #e8f5e9 !important; border-left-color: #4caf50 !important; }
+        .card-number { position: absolute; top: 8px; right: 8px; font-size: 0.65em; color: #888; font-weight: bold; }
+        .card-stars { font-size: 0.8em; margin-bottom: 2px; display: block; color: #ffc107; }
+        .card-title { font-weight: bold; display: block; margin-bottom: 4px; margin-right: 30px; font-size: 0.92em; }
+        .card-dates { font-size: 0.7em; color: #555; background: rgba(255,255,255,0.6); padding: 4px; border-radius: 4px; line-height: 1.3; }
+
+        .timeline-item { border-left: 3px solid #ddd; padding: 8px 15px; margin-bottom: 10px; border-radius: 0 6px 6px 0; background: #fafafa; position: relative; }
+        .seq-badge { position: absolute; left: -12px; top: 0; background: #666; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7em; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .tl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .stage-tag { background: #333; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; text-transform: uppercase; }
+        .btn-del-hist { background: none; border: none; cursor: pointer; font-size: 1.1em; color: #dc3545; }
+
+        /* Dashboard */
+        .dashboard-grid { overflow-y: auto; padding-bottom: 20px; height: 100%; display: flex; flex-direction: column; }
+        .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; flex-shrink: 0; }
+        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-shrink: 0; margin-bottom: 15px; }
+        .chart-box { background: white; padding: 10px; border-radius: 8px; height: 220px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
+        .chart-box-wide { grid-column: span 2; height: 300px; }
+        .chart-title { font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #555; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .metric-badge { position: absolute; top: 35px; right: 15px; background: #ffebee; color: #d32f2f; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+
+        .btn-save { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-icon { border: none; background: #eee; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 1.1em; }
+        .table-wrapper { flex: 1; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f1f3f5; text-align: left; padding: 10px; position: sticky; top: 0; border-bottom: 2px solid #ddd; color: #444; }
+        td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        tr:hover { background-color: #f8f9fa; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="brand">Perfecta CRM v13.0</div>
+        <div class="nav-buttons">
+            <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
+            <button onclick="switchView('leads')" id="btn-leads">🎯 Leads</button>
+            <button onclick="switchView('cadastro')" id="btn-cadastro">👥 Cadastro</button>
+            <button onclick="switchView('atendentes')" id="btn-atendentes">💼 Atendentes</button>
+            <button onclick="switchView('dashboard')" id="btn-dashboard">📈 Dashboard</button>
+        </div>
+    </nav>
+
+    <section id="view-funil" class="view-section active">
+        <div class="funnel-filters">
+            <button onclick="novoLeadDireto()" style="background:#28a745; color:white; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">+ Novo</button>
+            <label>Atendente: <select id="f-funil-atend" onchange="renderFunnel()" style="margin:0; width:110px; padding:4px;"><option value="todos">Todos</option></select></label>
+            <label>📅 De: <input type="date" id="f-funil-ini" onchange="renderFunnel()" style="margin:0; width:110px; padding:2px;"></label>
+            <label>Até: <input type="date" id="f-funil-fim" onchange="renderFunnel()" style="margin:0; width:110px; padding:2px;"></label>
+            <label>Realizado: 
+                <select id="f-funil-real" onchange="renderFunnel()" style="margin:0; padding:4px;">
+                    <option value="todos">Todos</option>
+                    <option value="com">Sim</option>
+                    <option value="sem" selected>Não</option>
+                </select>
+            </label>
+            <div style="display:flex; gap:8px;">
+                <label><input type="checkbox" checked onchange="toggleStarFilter(1)"> 1⭐</label>
+                <label><input type="checkbox" checked onchange="toggleStarFilter(2)"> 2⭐</label>
+                <label><input type="checkbox" checked onchange="toggleStarFilter(3)"> 3⭐</label>
+            </div>
+            <label style="margin-left:10px; border-left:1px solid #ddd; padding-left:15px; color:var(--primary); font-weight:bold;">
+                <input type="checkbox" id="f-funil-all" onchange="renderFunnel()" checked> Exibir Histórico Completo
+            </label>
+        </div>
+        <div class="board">
+            <div id="w-novo" class="column"><div class="column-header col-novo">Novos <span id="c-novo">0</span></div><div class="column-body" id="list-novo"></div></div>
+            <div id="w-contatado" class="column"><div class="column-header col-contatado">Contato <span id="c-contatado">0</span></div><div class="column-body" id="list-contatado"></div></div>
+            <div id="w-orcamento" class="column"><div class="column-header col-orcamento">Orçamento <span id="c-orcamento">0</span></div><div class="column-body" id="list-orcamento"></div></div>
+            <div id="w-negociacao" class="column"><div class="column-header col-negociacao">Negociação <span id="c-negociacao">0</span></div><div class="column-body" id="list-negociacao"></div></div>
+            <div id="w-fechado" class="column"><div class="column-header col-fechado">Fechados <span id="c-fechado">0</span></div><div class="column-body" id="list-fechado"></div></div>
+            <div id="w-perdido" class="column"><div class="column-header col-perdido">Perdidos <span id="c-perdido">0</span></div><div class="column-body" id="list-perdido"></div></div>
+        </div>
+    </section>
+
+    <section id="view-leads" class="view-section">
+        <div class="management-container">
+            <div class="form-area">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h2>Dados Básicos</h2>
+                    <button onclick="limparFormLead()" style="padding:5px 10px; cursor:pointer;">Limpar / Novo</button>
+                </div>
+                <form id="form-lead-main">
+                    <input type="hidden" id="lead-id">
+                    <label>Cliente *</label>
+                    <select id="lead-cliente" required onchange="showInfo('cliente', this.value)"><option value="">Carregando...</option></select>
+                    <span id="info-cliente" class="contact-info-display"></span>
+
+                    <label>Origem *</label>
+                    <select id="lead-origem" required>
+                        <option>Instagram</option><option>Tiktok</option><option>Facebook</option>
+                        <option>Novo Contato Ativo</option><option>Indicação - Arquiteto</option>
+                        <option>Indicação - Clientes</option><option>Indicação - Parceiros</option><option>Reativação</option>
+                    </select>
+
+                    <label>Indicação</label>
+                    <select id="lead-indicacao" onchange="showInfo('indicacao', this.value)"><option value="">Selecione...</option></select>
+                    <span id="info-indicacao" class="contact-info-display"></span>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div><label>Metragem (m²)</label><input type="text" id="lead-metragem"></div>
+                        <div><label>Peças</label><input type="number" id="lead-pecas"></div>
+                    </div>
+                    <label>Previsão Instalação</label><input type="date" id="lead-previsao">
+                    
+                    <label>Construtora</label>
+                    <select id="lead-construtora" onchange="showInfo('construtora', this.value)"><option value="">Selecione...</option></select>
+                    <span id="info-construtora" class="contact-info-display"></span>
+
+                    <label>Adm da Obra</label>
+                    <select id="lead-adm-obra" onchange="showInfo('adm-obra', this.value)"><option value="">Selecione...</option></select>
+                    <span id="info-adm-obra" class="contact-info-display"></span>
+
+                    <label>Arquiteto</label>
+                    <select id="lead-arquiteto" onchange="showInfo('arquiteto', this.value)"><option value="">Selecione...</option></select>
+                    <span id="info-arquiteto" class="contact-info-display"></span>
+
+                    <label>Responsável Obra</label>
+                    <select id="lead-responsavel" onchange="showInfo('responsavel', this.value)"><option value="">Selecione...</option></select>
+                    <span id="info-responsavel" class="contact-info-display"></span>
+
+                    <button type="submit" class="btn-save">Salvar Dados Básicos</button>
+                </form>
+
+                <div id="area-historico" style="display:none; margin-top:20px;">
+                    <hr><h3>📜 Histórico</h3>
+                    <form id="form-historico" style="background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #eee;">
+                        <input type="hidden" id="hist-index" value="">
+                        <label>Atendente *</label><select id="hist-atendente" required></select>
+                        
+                        <label>Contato *</label>
+                        <select id="hist-contato-tipo" required onchange="handleHistContato(this.value)">
+                            <option value="">Selecione...</option>
+                            <option value="Proprietário">Proprietário</option>
+                            <option value="Arquiteto">Arquiteto</option>
+                            <option value="Responsável Obra">Responsável Obra</option>
+                            <option value="Adm Obra">Adm Obra</option>
+                            <option value="Construtora">Construtora</option>
+                            <option value="Outra">Outra</option>
+                        </select>
+                        <div id="area-contato-outra" style="display:none">
+                            <label>Selecionar Cadastro</label>
+                            <select id="hist-contato-id" onchange="updateHistContactDisplay(this.value)"></select>
+                        </div>
+                        <span id="info-hist-contato" class="contact-info-display" style="color: #28a745; font-weight: bold;"></span>
+
+                        <label>Etapa *</label><select id="hist-etapa" required><option value="novo">Novo</option><option value="contatado">Contato</option><option value="orcamento">Orçamento</option><option value="negociacao">Negociação</option><option value="fechado">Fechado</option><option value="perdido">Perdido</option></select>
+                        <label>Classificação</label>
+                        <select id="hist-temp">
+                            <option value="">Sem estrelas</option>
+                            <option value="1">⭐ 1 Estrela</option>
+                            <option value="2">⭐⭐ 2 Estrelas</option>
+                            <option value="3">⭐⭐⭐ 3 Estrelas</option>
+                        </select>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1"><label>Programado</label><input type="datetime-local" id="hist-prog"></div>
+                            <div style="flex:1"><label>Realizado</label><input type="datetime-local" id="hist-real"></div>
+                        </div>
+
+                        <label>Resultado da Interação *</label>
+                        <select id="hist-resultado">
+                            <option value="">Selecione...</option>
+                            <option value="Sucesso">Sucesso</option>
+                            <option value="Insucesso">Insucesso</option>
+                        </select>
+                        
+                        <label>Última alteração 'Realizado'</label>
+                        <input type="text" id="hist-upd-real" readonly style="background:#f0f0f0; color:#666; font-size:0.85em;">
+
+                        <label>Resumo</label><textarea id="hist-resumo" required style="height:60px;"></textarea>
+                        <button type="submit" class="btn-save" style="background:#17a2b8" id="btn-save-hist">+ Gravar Interação</button>
+                    </form>
+                    <div id="timeline-list" style="margin-top:15px;"></div>
+                </div>
+            </div>
+            <div class="list-area">
+                <h2>Leads</h2>
+                <div class="table-wrapper">
+                    <table id="table-leads">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Desde</th>
+                                <th>Cliente</th>
+                                <th>Etapa</th>
+                                <th style="width:110px">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-cadastro" class="view-section">
+        <div class="management-container">
+            <div class="form-area" style="width:400px;">
+                <h2>Novo Registro</h2>
+                <form id="form-cliente">
+                    <input type="hidden" id="cli-id">
+                    <label>Nome *</label><input type="text" id="cli-nome" required>
+                    <label>Tipo *</label>
+                    <select id="cli-tipo" required>
+                        <option>Cliente</option><option>Arquiteto</option><option>Responsável Obra</option>
+                        <option>Construtora</option><option>Adm da Obra</option><option>Outro</option>
+                    </select>
+                    <label>Status</label><select id="cli-status"><option>Novo</option><option>Ativo</option><option>Inativo</option></select>
+                    <label>Telefone/Whats</label><input type="text" id="cli-telefone" placeholder="(99) 99999-9999">
+                    <label>E-mail</label><input type="email" id="cli-email">
+                    <label>Cidade</label><input type="text" id="cli-cidade">
+                    <label>Endereço</label><input type="text" id="cli-endereco">
+                    <button type="submit" class="btn-save">Salvar</button>
+                </form>
+            </div>
+            <div class="list-area"><h2>Cadastro Geral</h2><div class="table-wrapper"><table id="table-clientes"><thead><tr><th>Nome</th><th>Tipo</th><th>Cidade</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+    </section>
+
+    <section id="view-atendentes" class="view-section">
+        <div class="management-container">
+            <div class="form-area" style="width:400px;">
+                <h2>Equipe</h2>
+                <form id="form-atendente">
+                    <input type="hidden" id="atend-id">
+                    <label>Nome *</label><input type="text" id="atend-nome" required>
+                    <label>Email</label><input type="email" id="atend-email" required>
+                    <label>Whats</label><input type="text" id="atend-whats" placeholder="(99) 99999-9999">
+                    <button type="submit" class="btn-save">Salvar</button>
+                </form>
+            </div>
+            <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
+        </div>
+    </section>
+
+    <section id="view-dashboard" class="view-section">
+        <div class="dashboard-grid">
+            <div class="filter-bar">
+                <div class="filter-group"><label>Início</label><input type="date" id="dash-inicio"></div>
+                <div class="filter-group"><label>Fim</label><input type="date" id="dash-fim"></div>
+                <div class="filter-group"><label>Atendente</label><select id="dash-atendente"><option value="todos">Todos</option></select></div>
+                <button class="btn-save" style="width:auto; height:42px; padding:0 20px;" onclick="processarDashboard()">Atualizar</button>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-box">
+                    <div class="chart-title">📍 Leads por Origem</div>
+                    <canvas id="chartOrigem"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">📅 Novos Leads (Por Dia)</div>
+                    <canvas id="chartLeadsDay"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">⏱️ Performance e Atraso Médio</div>
+                    <div id="delay-metric" class="metric-badge" style="display:none"></div>
+                    <canvas id="chartPerformance"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">⏳ Média de Dias por Etapa</div>
+                    <canvas id="chartStageTime"></canvas>
+                </div>
+                <div class="chart-box chart-box-wide">
+                    <div class="chart-title">🚀 Evolução: Tempo para Mudar de Etapa (Médias)</div>
+                    <canvas id="chartCycleTime"></canvas>
+                </div>
+            </div>
+
+            <div class="list-area" style="min-height:300px; margin-top:15px; flex:none;">
+                <h3 style="margin:0 0 10px 0">📋 Relatório Filtrado <span id="dash-count" style="font-size:0.8em; font-weight:normal; color:#666"></span></h3>
+                <div class="table-wrapper">
+                    <table id="dash-table">
+                        <thead><tr><th>Data</th><th>Etapa</th><th>#Lead</th><th>Cliente</th><th>Status</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyDxikX_gLL3l2fQuHmSZUai5-1CgBGp2ao", authDomain: "orcamento-80415.firebaseapp.com", projectId: "orcamento-80415", storageBucket: "orcamento-80415.firebasestorage.app", messagingSenderId: "767008319616", appId: "1:767008319616:web:78b45f56f92ce7a5091e65" };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let listaLeads=[], listaClientes=[], listaAtendentes=[], leadAtual=null, starFilters=[1,2,3];
+        let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
+
+        function formatBR(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+        
+        const maskPhone = (v) => {
+            v = v.replace(/\D/g, "");
+            if (v.length > 11) v = v.substring(0, 11);
+            v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+            v = v.replace(/(\d{5})(\d)/, "$1-$2");
+            return v;
+        };
+
+        document.querySelectorAll('input[id$="telefone"], input[id$="whats"]').forEach(el => {
+            el.addEventListener('input', (e) => e.target.value = maskPhone(e.target.value));
+        });
+
+        window.showInfo = (field, id) => {
+            const span = document.getElementById('info-' + field);
+            const item = listaClientes.find(c => c.id === id);
+            span.innerText = item ? `📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "";
+        };
+
+        onSnapshot(collection(db, "atendentes"), (snap) => {
+            listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
+            const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
+            const selHist = document.getElementById('hist-atendente'); selHist.innerHTML = '<option value="">Selecione...</option>';
+            const selFunil = document.getElementById('f-funil-atend'); selFunil.innerHTML = '<option value="todos">Todos</option>';
+            const selDash = document.getElementById('dash-atendente'); selDash.innerHTML = '<option value="todos">Todos</option>';
+            listaAtendentes.forEach(a => {
+                tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
+                const opt = `<option value="${a.nome}">${a.nome}</option>`;
+                selHist.innerHTML += opt; selFunil.innerHTML += opt; selDash.innerHTML += opt;
+            });
+        });
+
+        onSnapshot(collection(db, "clientes"), (snap) => {
+            listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
+            const tb = document.querySelector('#table-clientes tbody'); tb.innerHTML = '';
+            
+            const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerHTML = '<option value="">Selecione...</option>';
+            });
+
+            listaClientes.forEach(c => {
+                tb.innerHTML += `<tr onclick="editarCli('${c.id}')" style="cursor:pointer"><td>${c.nome_empresa}</td><td>${c.tipo||'Cliente'}</td><td>${c.cidade||''}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button></td></tr>`;
+                const opt = `<option value="${c.id}">${c.nome_empresa}</option>`;
+                selects.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.innerHTML += opt;
+                });
+            });
+            renderTableLeads();
+        });
+
+        onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
+            listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
+            renderFunnel(); renderTableLeads();
+            if(document.getElementById('view-dashboard').classList.contains('active')) processarDashboard();
+        });
+
+        window.handleHistContato = (val) => {
+            const areaOutra = document.getElementById('area-contato-outra');
+            const span = document.getElementById('info-hist-contato');
+            areaOutra.style.display = (val === 'Outra') ? 'block' : 'none';
+            
+            let targetId = "";
+            if(val === 'Proprietário') targetId = leadAtual.cliente_id;
+            else if(val === 'Arquiteto') targetId = leadAtual.arquiteto_id;
+            else if(val === 'Responsável Obra') targetId = leadAtual.responsavel_id;
+            else if(val === 'Adm Obra') targetId = leadAtual.adm_obra_id;
+            else if(val === 'Construtora') targetId = leadAtual.construtora_id;
+
+            if(val !== 'Outra') updateHistContactDisplay(targetId);
+        };
+
+        window.updateHistContactDisplay = (id) => {
+            const span = document.getElementById('info-hist-contato');
+            const item = listaClientes.find(c => c.id === id);
+            span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Contato não vinculado nos dados básicos.";
+        };
+
+        window.renderFunnel = () => {
+            const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', negociacao:'list-negociacao', fechado:'list-fechado', perdido:'list-perdido'};
+            Object.values(cols).forEach(id => document.getElementById(id).innerHTML = '');
+            const atend = document.getElementById('f-funil-atend').value;
+            const dtIni = document.getElementById('f-funil-ini').value, dtFim = document.getElementById('f-funil-fim').value, fReal = document.getElementById('f-funil-real').value;
+            const showAll = document.getElementById('f-funil-all').checked;
+
+            listaLeads.forEach(lead => {
+                const hist = lead.historico || [];
+                const itemsToProcess = (hist.length > 0) ? (showAll ? hist : [hist[hist.length-1]]) : [{etapa: lead.etapa || 'novo', temperatura: ""}];
+
+                itemsToProcess.forEach(h => {
+                    if(atend !== 'todos' && h.atendente !== atend) return;
+                    if(h.temperatura && !starFilters.includes(parseInt(h.temperatura))) return;
+                    if(fReal === 'com' && !h.data_realizada) return;
+                    if(fReal === 'sem' && h.data_realizada) return;
+                    if(dtIni || dtFim) { if(!h.data_programada) return; const pDate = h.data_programada.split('T')[0]; if(dtIni && pDate < dtIni) return; if(dtFim && pDate > dtFim) return; }
+
+                    const desde = lead.created_at ? new Date(lead.created_at.toDate()).toLocaleString('pt-BR') : '-';
+                    let cor = '';
+                    if(h.data_programada && !h.data_realizada) { cor = new Date(h.data_programada) < new Date() ? 'card-red' : 'card-blue'; } else if(h.data_realizada) cor = 'card-green';
+
+                    const div = document.getElementById(cols[h.etapa]);
+                    if(div) {
+                        div.innerHTML += `
+                            <div class="card ${cor}" onclick="editarLead('${lead.id}')">
+                                <span class="card-number">${lead.numero_lead||''}</span>
+                                <span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span>
+                                <span class="card-title">${lead.nome_cliente_cache}</span>
+                                <div class="card-dates">
+                                    <b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br>
+                                    <b>Desde:</b> ${desde}<br>
+                                    <b>Prog:</b> ${formatBR(h.data_programada)}<br>
+                                    <b>Real:</b> ${formatBR(h.data_realizada)}
+                                </div>
+                            </div>`;
+                    }
+                });
+            });
+
+            Object.keys(cols).forEach(key => {
+                const count = document.getElementById(cols[key]).children.length;
+                const badge = document.getElementById('c-' + key);
+                if(badge) badge.innerText = count;
+            });
+        };
+
+        window.renderTableLeads = () => {
+            const tb = document.querySelector('#table-leads tbody'); tb.innerHTML = '';
+            listaLeads.forEach(l => {
+                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const desde = l.created_at ? new Date(l.created_at.toDate()).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
+                const cliente = listaClientes.find(c => c.id === l.cliente_id);
+                const tel = (cliente && cliente.telefone) ? cliente.telefone.replace(/\D/g, '') : '';
+                const btnWhats = tel ? `<a href="https://wa.me/55${tel}" target="_blank" title="WhatsApp" style="text-decoration:none; margin-right:8px; font-size:1.1em;">🟢</a>` : '';
+                tb.innerHTML += `<tr onclick="editarLead('${l.id}')" style="cursor:pointer"><td>${l.numero_lead||''}</td><td>${desde}</td><td>${l.nome_cliente_cache}</td><td style="text-transform:capitalize">${etapa}</td><td>${btnWhats}<button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button></td></tr>`;
+            });
+        };
+
+        window.processarDashboard = () => {
+            const iniStr = document.getElementById('dash-inicio').value;
+            const fimStr = document.getElementById('dash-fim').value;
+            if(!iniStr || !fimStr) return;
+            const ini = new Date(iniStr + "T00:00:00"), fim = new Date(fimStr + "T23:59:59"), atendente = document.getElementById('dash-atendente').value;
+            const origemCount = {}, leadsDiaCount = {}, stageDurations = {}, cycleTimes = {contatado:[], orcamento:[], negociacao:[], fechado:[]};
+            let countPrazo=0, countAtraso=0, filteredData=[], totalDelayHours = 0;
+
+            listaLeads.forEach(l => {
+                const dtCriacao = l.created_at ? l.created_at.toDate() : null;
+                if(dtCriacao && dtCriacao >= ini && dtCriacao <= fim) {
+                    origemCount[l.origem] = (origemCount[l.origem]||0)+1;
+                    const keyDay = dtCriacao.toLocaleDateString('pt-BR');
+                    leadsDiaCount[keyDay] = (leadsDiaCount[keyDay]||0)+1;
+                }
+                if(l.historico) {
+                    let lastDate = dtCriacao;
+                    l.historico.forEach((h, idx) => {
+                        const dataRef = h.data_realizada ? new Date(h.data_realizada) : (h.data_programada ? new Date(h.data_programada) : null);
+                        if(dataRef) {
+                            if(lastDate) {
+                                const diffDias = (dataRef - lastDate) / (1000*60*60*24);
+                                const prevEtapa = idx === 0 ? 'novo' : l.historico[idx-1].etapa;
+                                if(!stageDurations[prevEtapa]) stageDurations[prevEtapa] = [];
+                                stageDurations[prevEtapa].push(diffDias);
+                            }
+                            if(dtCriacao && cycleTimes[h.etapa] !== undefined) cycleTimes[h.etapa].push((dataRef - dtCriacao) / (1000*60*60*24));
+                            lastDate = dataRef;
+                            if(atendente === 'todos' || h.atendente === atendente) {
+                                if(dataRef >= ini && dataRef <= fim) {
+                                    let isDelayed = false;
+                                    if(h.data_programada && h.data_realizada) {
+                                        const p = new Date(h.data_programada), r = new Date(h.data_realizada);
+                                        if(r > p) { isDelayed = true; totalDelayHours += (r - p) / (1000*60*60); }
+                                    } else if (h.data_programada && !h.data_realizada && new Date(h.data_programada) < new Date()) {
+                                        isDelayed = true; totalDelayHours += (new Date() - new Date(h.data_programada)) / (1000*60*60);
+                                    }
+                                    if(isDelayed) countAtraso++; else countPrazo++;
+                                    filteredData.push({id: l.id, dt: dataRef.toLocaleString('pt-BR'), etapa: h.etapa, num: l.numero_lead, cli: l.nome_cliente_cache, st: isDelayed ? 'Atrasado' : 'No Prazo'});
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            const badge = document.getElementById('delay-metric');
+            if(countAtraso > 0) {
+                const avgDelay = totalDelayHours / countAtraso;
+                const d = Math.floor(avgDelay/24), h = Math.floor(avgDelay % 24);
+                badge.innerText = `⏳ Atraso Médio: ${d}d ${h}h`; badge.style.display = 'block';
+            } else badge.style.display = 'none';
+
+            const stageMeans = Object.keys(stageDurations).map(k => ({etapa: k, media: (stageDurations[k].reduce((a,b)=>a+b,0) / stageDurations[k].length).toFixed(1)}));
+            const cycleMeans = Object.keys(cycleTimes).map(k => cycleTimes[k].length ? (cycleTimes[k].reduce((a,b)=>a+b,0) / cycleTimes[k].length).toFixed(1) : 0);
+            drawCharts(origemCount, leadsDiaCount, countPrazo, countAtraso, stageMeans, cycleMeans);
+            renderDashTable(filteredData);
+        };
+
+        function drawCharts(origem, leadsDia, prazo, atraso, stageMeans, cycleMeans) {
+            if(chartOrigem) chartOrigem.destroy();
+            chartOrigem = new Chart(document.getElementById('chartOrigem'), { type: 'bar', data: { labels: Object.keys(origem), datasets: [{ label: 'Leads', data: Object.values(origem), backgroundColor: '#007bff' }] }, options: { indexAxis: 'y', maintainAspectRatio: false } });
+            if(chartLeadsDay) chartLeadsDay.destroy();
+            const keys = Object.keys(leadsDia).sort((a,b) => { const [d1,m1,y1]=a.split('/'); const [d2,m2,y2]=b.split('/'); return new Date(`${y1}-${m1}-${d1}`) - new Date(`${y2}-${m2}-${d2}`); });
+            chartLeadsDay = new Chart(document.getElementById('chartLeadsDay'), { type: 'bar', data: { labels: keys, datasets: [{ label: 'Novos Leads', data: keys.map(k=>leadsDia[k]), backgroundColor: '#28a745' }] }, options: { maintainAspectRatio: false } });
+            if(chartPerf) chartPerf.destroy();
+            chartPerf = new Chart(document.getElementById('chartPerformance'), { type: 'doughnut', data: { labels: ['No Prazo', 'Atrasado'], datasets: [{ data: [prazo, atraso], backgroundColor: ['#28a745', '#dc3545'] }] }, options: { maintainAspectRatio: false } });
+            if(chartStageTime) chartStageTime.destroy();
+            chartStageTime = new Chart(document.getElementById('chartStageTime'), { type: 'bar', data: { labels: stageMeans.map(m=>m.etapa), datasets: [{ label: 'Dias Médios', data: stageMeans.map(m=>m.media), backgroundColor: '#fd7e14' }] }, options: { maintainAspectRatio: false } });
+            if(chartCycleTime) chartCycleTime.destroy();
+            chartCycleTime = new Chart(document.getElementById('chartCycleTime'), { type: 'line', data: { labels: ['Contato', 'Orçamento', 'Negociação', 'Fechado'], datasets: [{ label: 'Dias desde a criação', data: cycleMeans, borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] }, options: { maintainAspectRatio: false } });
+        }
+
+        function renderDashTable(data) {
+            const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = '';
+            document.getElementById('dash-count').innerText = `(${data.length} registros)`;
+            data.forEach(r => tb.innerHTML += `<tr onclick="editarLead('${r.id}')" style="cursor:pointer"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.num}</td><td>${r.cli}</td><td>${r.st}</td></tr>`);
+        }
+
+        document.getElementById('form-historico').onsubmit = async(e) => {
+            e.preventDefault();
+            const idx = document.getElementById('hist-index').value;
+            const h = { 
+                atendente: document.getElementById('hist-atendente').value,
+                contato_tipo: document.getElementById('hist-contato-tipo').value,
+                contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "",
+                etapa: document.getElementById('hist-etapa').value,
+                data_programada: document.getElementById('hist-prog').value,
+                data_realizada: document.getElementById('hist-real').value,
+                resultado: document.getElementById('hist-resultado').value,
+                resumo: document.getElementById('hist-resumo').value,
+                temperatura: document.getElementById('hist-temp').value,
+                data_operacao: new Date().toLocaleString('pt-BR')
+            };
+            if (h.etapa !== 'novo' && !h.temperatura) { alert("A classificação por estrelas é obrigatória para esta etapa."); return; }
+            if (h.data_realizada && !h.resultado) { alert("O campo 'Resultado da Interação' é obrigatório quando a data 'Realizado' é preenchida."); return; }
+            
+            let hist = [...(leadAtual.historico || [])];
+            if(idx !== "") {
+                h.updated_realizada_at = (hist[parseInt(idx)].data_realizada !== h.data_realizada) ? new Date().toLocaleString('pt-BR') : (hist[parseInt(idx)].updated_realizada_at || '-');
+                hist[parseInt(idx)] = h;
+            } else {
+                h.updated_realizada_at = h.data_realizada ? new Date().toLocaleString('pt-BR') : '-';
+                hist.push(h);
+                
+                if (h.data_realizada && h.resultado === "Insucesso") {
+                    const autoReagendamento = { 
+                        ...h, 
+                        data_realizada: "", 
+                        resultado: "", 
+                        data_operacao: new Date().toLocaleString('pt-BR'), 
+                        updated_realizada_at: '-', 
+                        resumo: "REAGENDAMENTO AUTOMÁTICO (Insucesso): " + h.resumo 
+                    };
+                    hist.push(autoReagendamento);
+                }
+            }
+            await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: h.etapa });
+            leadAtual.historico = hist; renderTimeline(); limparFormHist();
+        };
+
+        window.editHist = (i) => {
+            const h = leadAtual.historico[i];
+            document.getElementById('hist-index').value = i;
+            document.getElementById('hist-atendente').value = h.atendente;
+            document.getElementById('hist-contato-tipo').value = h.contato_tipo || "";
+            handleHistContato(h.contato_tipo);
+            if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || "";
+            document.getElementById('hist-etapa').value = h.etapa;
+            document.getElementById('hist-temp').value = h.temperatura || "";
+            document.getElementById('hist-prog').value = h.data_programada || '';
+            document.getElementById('hist-real').value = h.data_realizada || '';
+            document.getElementById('hist-resultado').value = h.resultado || '';
+            document.getElementById('hist-resumo').value = h.resumo;
+            document.getElementById('hist-upd-real').value = h.updated_realizada_at || '-';
+            document.getElementById('btn-save-hist').innerText = "Atualizar Interação";
+        };
+
+        window.novoHistBaseado = (i) => {
+            const h = leadAtual.historico[i];
+            limparFormHist();
+            document.getElementById('hist-atendente').value = h.atendente;
+            document.getElementById('hist-contato-tipo').value = h.contato_tipo || "";
+            handleHistContato(h.contato_tipo);
+            if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || "";
+            document.getElementById('hist-etapa').value = h.etapa;
+            document.getElementById('hist-temp').value = h.temperatura || "";
+            document.getElementById('hist-prog').value = "";
+            document.getElementById('hist-real').value = "";
+            document.getElementById('hist-resultado').value = "";
+            document.getElementById('hist-resumo').value = "";
+            document.getElementById('btn-save-hist').innerText = "+ Gravar Interação";
+            document.getElementById('form-historico').scrollIntoView();
+        };
+
+        window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
+        window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
+        window.limparFormLead = () => { 
+            document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; 
+            document.getElementById('area-historico').style.display='none'; leadAtual=null; 
+            document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = "");
+        };
+        window.limparFormHist = () => { 
+            document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; 
+            document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; 
+            document.getElementById('info-hist-contato').innerText = "";
+            document.getElementById('area-contato-outra').style.display = "none";
+        };
+        window.excluirLead = async(id) => { if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
+        window.novoLeadDireto = () => { window.switchView('leads'); window.limparFormLead(); };
+        window.excluirCli = async(id) => { if(listaLeads.some(l => l.cliente_id === id)) return alert("Erro: Este registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
+        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === nome))) return alert("Erro: Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
+        
+        document.getElementById('form-cliente').onsubmit = async(e) => { 
+            e.preventDefault(); 
+            const id=document.getElementById('cli-id').value, d={ 
+                nome_empresa:document.getElementById('cli-nome').value, 
+                tipo:document.getElementById('cli-tipo').value,
+                status:document.getElementById('cli-status').value, 
+                telefone:document.getElementById('cli-telefone').value, 
+                email:document.getElementById('cli-email').value,
+                cidade:document.getElementById('cli-cidade').value, 
+                endereco:document.getElementById('cli-endereco').value 
+            }; 
+            if(id) await updateDoc(doc(db,"clientes",id),d); else await addDoc(collection(db,"clientes"),d); 
+            document.getElementById('form-cliente').reset(); document.getElementById('cli-id').value=''; 
+        };
+        
+        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
+        
+        document.getElementById('form-lead-main').onsubmit = async(e) => { 
+            e.preventDefault(); 
+            const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente');
+            const origem = document.getElementById('lead-origem').value;
+            const indicacao = document.getElementById('lead-indicacao').value;
+
+            if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) {
+                alert("O campo Indicação é obrigatório para esta origem."); return;
+            }
+
+            const d={ 
+                cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, 
+                origem:origem, indicacao_id: indicacao,
+                metragem:document.getElementById('lead-metragem').value, pecas:document.getElementById('lead-pecas').value, 
+                previsao:document.getElementById('lead-previsao').value, 
+                construtora_id: document.getElementById('lead-construtora').value,
+                adm_obra_id: document.getElementById('lead-adm-obra').value,
+                arquiteto_id: document.getElementById('lead-arquiteto').value, 
+                responsavel_id: document.getElementById('lead-responsavel').value, 
+                updated_at:serverTimestamp() 
+            }; 
+            if(id) await updateDoc(doc(db,"leads",id),d); 
+            else { d.created_at=serverTimestamp(); d.numero_lead="#L-"+Math.floor(1000+Math.random()*9000); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
+            alert('Dados Salvos!'); 
+        };
+
+        window.editarLead = (id) => { 
+            leadAtual = listaLeads.find(l => l.id === id); 
+            switchView('leads'); 
+            document.getElementById('lead-id').value = id; 
+            document.getElementById('lead-cliente').value = leadAtual.cliente_id; showInfo('cliente', leadAtual.cliente_id);
+            document.getElementById('lead-origem').value = leadAtual.origem; 
+            document.getElementById('lead-indicacao').value = leadAtual.indicacao_id || ''; showInfo('indicacao', leadAtual.indicacao_id);
+            document.getElementById('lead-metragem').value = leadAtual.metragem || ''; 
+            document.getElementById('lead-pecas').value = leadAtual.pecas || ''; 
+            document.getElementById('lead-previsao').value = leadAtual.previsao || ''; 
+            document.getElementById('lead-construtora').value = leadAtual.construtora_id || ''; showInfo('construtora', leadAtual.construtora_id);
+            document.getElementById('lead-adm-obra').value = leadAtual.adm_obra_id || ''; showInfo('adm-obra', leadAtual.adm_obra_id);
+            document.getElementById('lead-arquiteto').value = leadAtual.arquiteto_id || ''; showInfo('arquiteto', leadAtual.arquiteto_id);
+            document.getElementById('lead-responsavel').value = leadAtual.responsavel_id || ''; showInfo('responsavel', leadAtual.responsavel_id);
+            document.getElementById('area-historico').style.display = 'block'; 
+            limparFormHist(); renderTimeline(); 
+        };
+
+        window.editarCli = (id) => { const c = listaClientes.find(x => x.id === id); switchView('cadastro'); document.getElementById('cli-id').value = c.id; document.getElementById('cli-nome').value = c.nome_empresa; document.getElementById('cli-tipo').value = c.tipo || 'Cliente'; document.getElementById('cli-status').value = c.status; document.getElementById('cli-telefone').value = c.telefone || ''; document.getElementById('cli-email').value = c.email || ''; document.getElementById('cli-cidade').value = c.cidade || ''; document.getElementById('cli-endereco').value = c.endereco || ''; };
+        window.editarAtend = (id) => { const a = listaAtendentes.find(x => x.id === id); switchView('atendentes'); document.getElementById('atend-id').value = a.id; document.getElementById('atend-nome').value = a.nome; document.getElementById('atend-email').value = a.email; document.getElementById('atend-whats').value = a.whats || ''; };
+        
+        window.renderTimeline = () => { 
+            const div = document.getElementById('timeline-list'); div.innerHTML = ''; 
+            const histArray = (leadAtual.historico || []).map((h, i) => ({...h, idx: i}));
+            
+            histArray.reverse().forEach((h, indexInTimeline) => { 
+                const btnNovo = (indexInTimeline === 0) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado neste">➕</button>` : '';
+                let targetId = "";
+                if(h.contato_tipo === 'Proprietário') targetId = leadAtual.cliente_id;
+                else if(h.contato_tipo === 'Arquiteto') targetId = leadAtual.arquiteto_id;
+                else if(h.contato_tipo === 'Responsável Obra') targetId = leadAtual.responsavel_id;
+                else if(h.contato_tipo === 'Adm Obra') targetId = leadAtual.adm_obra_id;
+                else if(h.contato_tipo === 'Construtora') targetId = leadAtual.construtora_id;
+                else if(h.contato_tipo === 'Outra') targetId = h.contato_id;
+
+                const contactData = listaClientes.find(c => c.id === targetId);
+                const phone = contactData ? contactData.telefone.replace(/\D/g, '') : '';
+                const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" title="WhatsApp" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
+
+                div.innerHTML += `
+                <div class="timeline-item">
+                    <div class="seq-badge">${h.idx + 1}</div>
+                    <div class="tl-header">
+                        <span class="stage-tag">${h.etapa}</span>
+                        <div>
+                            <button class="btn-icon" onclick="editHist(${h.idx})" title="Editar">✏️</button>
+                            ${btnNovo}
+                            <button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button>
+                        </div>
+                    </div>
+                    <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br>
+                    <span style="font-size:0.75em; color:#666">
+                        📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} 
+                        | 📅 Operação: ${h.data_operacao || '-'} 
+                        | 🏁 Status: ${h.resultado || '-'}
+                    </span>
+                    <div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;">
+                        <b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br>
+                        <i>${h.resumo}</i>
+                    </div>
+                </div>`; 
+            }); 
+        };
+
+        window.delHist = async (i) => { if(!confirm("Excluir esta interação?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); leadAtual.historico = hist; renderTimeline(); };
+        window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; };
+    </script>
+</body>
+</html>
