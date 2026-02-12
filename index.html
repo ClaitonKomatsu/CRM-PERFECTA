@@ -60,6 +60,11 @@
         .stage-tag { background: #333; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; text-transform: uppercase; }
         .btn-del-hist { background: none; border: none; cursor: pointer; font-size: 1.1em; color: #dc3545; }
 
+        /* Estilos Arquivos */
+        .file-item { display: flex; align-items: center; justify-content: space-between; background: #f8f9fa; padding: 8px; border-radius: 4px; margin-bottom: 5px; border: 1px solid #eee; font-size: 0.85em; }
+        .file-name { color: var(--primary); text-decoration: none; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+        .file-name:hover { text-decoration: underline; }
+
         /* Dashboard */
         .dashboard-grid { overflow-y: auto; padding-bottom: 20px; height: 100%; display: flex; flex-direction: column; }
         .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; flex-shrink: 0; }
@@ -170,6 +175,13 @@
 
                     <button type="submit" class="btn-save">Salvar Dados Básicos</button>
                 </form>
+
+                <div id="area-arquivos" style="display:none; margin-top:20px;">
+                    <hr><h3>📁 Arquivos</h3>
+                    <input type="file" id="lead-file-input" style="display:none" onchange="handleFileUpload(this.files)">
+                    <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px;">+ Upload de Arquivo</button>
+                    <div id="lead-files-list"></div>
+                </div>
 
                 <div id="area-historico" style="display:none; margin-top:20px;">
                     <hr><h3>📜 Histórico</h3>
@@ -330,10 +342,12 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
         const firebaseConfig = { apiKey: "AIzaSyDxikX_gLL3l2fQuHmSZUai5-1CgBGp2ao", authDomain: "orcamento-80415.firebaseapp.com", projectId: "orcamento-80415", storageBucket: "orcamento-80415.firebasestorage.app", messagingSenderId: "767008319616", appId: "1:767008319616:web:78b45f56f92ce7a5091e65" };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
         let listaLeads=[], listaClientes=[], listaAtendentes=[], leadAtual=null, starFilters=[1,2,3];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
@@ -396,7 +410,62 @@
             listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
             renderFunnel(); renderTableLeads();
             if(document.getElementById('view-dashboard').classList.contains('active')) processarDashboard();
+            if(leadAtual) {
+                const updated = listaLeads.find(l => l.id === leadAtual.id);
+                if(updated) { leadAtual = updated; renderArquivos(); }
+            }
         });
+
+        window.handleFileUpload = async (files) => {
+            if(!leadAtual) return alert("Salve os dados básicos antes de enviar arquivos.");
+            const file = files[0];
+            if(!file) return;
+
+            const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, path);
+            
+            try {
+                const snapshot = await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(snapshot.ref);
+                const arquivos = leadAtual.arquivos || [];
+                arquivos.push({ name: file.name, url: url, path: path });
+                await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos });
+                alert("Arquivo enviado!");
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao enviar arquivo.");
+            }
+            document.getElementById('lead-file-input').value = "";
+        };
+
+        window.renderArquivos = () => {
+            const list = document.getElementById('lead-files-list');
+            list.innerHTML = "";
+            if(!leadAtual || !leadAtual.arquivos) return;
+            leadAtual.arquivos.forEach((file, idx) => {
+                list.innerHTML += `
+                    <div class="file-item">
+                        <a href="${file.url}" target="_blank" class="file-name">${file.name}</a>
+                        <button class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red">🗑️</button>
+                    </div>
+                `;
+            });
+        };
+
+        window.excluirArquivo = async (idx) => {
+            if(!confirm("Excluir este arquivo permanentemente?")) return;
+            const file = leadAtual.arquivos[idx];
+            const storageRef = ref(storage, file.path);
+            try {
+                await deleteObject(storageRef);
+                const arquivos = [...leadAtual.arquivos];
+                arquivos.splice(idx, 1);
+                await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos });
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao excluir arquivo.");
+            }
+        };
 
         window.handleHistContato = (val) => {
             const areaOutra = document.getElementById('area-contato-outra');
@@ -636,7 +705,9 @@
         window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
         window.limparFormLead = () => { 
             document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; 
-            document.getElementById('area-historico').style.display='none'; leadAtual=null; 
+            document.getElementById('area-historico').style.display='none'; 
+            document.getElementById('area-arquivos').style.display='none'; 
+            leadAtual=null; 
             document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = "");
         };
         window.limparFormHist = () => { 
@@ -648,7 +719,7 @@
         window.excluirLead = async(id) => { if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
         window.novoLeadDireto = () => { window.switchView('leads'); window.limparFormLead(); };
         window.excluirCli = async(id) => { if(listaLeads.some(l => l.cliente_id === id)) return alert("Erro: Este registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
-        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === nome))) return alert("Erro: Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
+        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === name))) return alert("Erro: Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
         
         document.getElementById('form-cliente').onsubmit = async(e) => { 
             e.preventDefault(); 
@@ -708,7 +779,8 @@
             document.getElementById('lead-arquiteto').value = leadAtual.arquiteto_id || ''; showInfo('arquiteto', leadAtual.arquiteto_id);
             document.getElementById('lead-responsavel').value = leadAtual.responsavel_id || ''; showInfo('responsavel', leadAtual.responsavel_id);
             document.getElementById('area-historico').style.display = 'block'; 
-            limparFormHist(); renderTimeline(); 
+            document.getElementById('area-arquivos').style.display = 'block'; 
+            limparFormHist(); renderTimeline(); renderArquivos();
         };
 
         window.editarCli = (id) => { const c = listaClientes.find(x => x.id === id); switchView('cadastro'); document.getElementById('cli-id').value = c.id; document.getElementById('cli-nome').value = c.nome_empresa; document.getElementById('cli-tipo').value = c.tipo || 'Cliente'; document.getElementById('cli-status').value = c.status; document.getElementById('cli-telefone').value = c.telefone || ''; document.getElementById('cli-email').value = c.email || ''; document.getElementById('cli-cidade').value = c.cidade || ''; document.getElementById('cli-endereco').value = c.endereco || ''; };
