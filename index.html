@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V13.0</title>
+    <title>Perfecta CRM - V14.1 (Orçamentos)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -87,15 +87,24 @@
         th { background: #f1f3f5; text-align: left; padding: 10px; position: sticky; top: 0; border-bottom: 2px solid #ddd; color: #444; }
         td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
         tr:hover { background-color: #f8f9fa; cursor: pointer; }
+
+        /* Estilos Exclusivos para a nova aba Orçamentos/Modal */
+        #dialog-apontamento { border: none; border-radius: 8px; padding: 20px; width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        #dialog-apontamento::backdrop { background: rgba(0,0,0,0.5); }
+        .readonly-field { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; }
+        .hist-list-item { font-size: 0.8em; padding: 8px; border-bottom: 1px solid #eee; background: #fafafa; margin-bottom: 4px; }
+        
+        /* NOVO: Classe para alinhar botões na tabela */
+        .btn-group-row { display: flex; gap: 8px; justify-content: center; align-items: center; white-space: nowrap; }
     </style>
 </head>
 <body>
 
     <nav>
-        <div class="brand">Perfecta CRM v13.0</div>
+        <div class="brand">Perfecta CRM v14.1</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
-            <button onclick="switchView('apontamento')" id="btn-apontamento">🕐 Apontamento</button>
+            <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
             <button onclick="switchView('leads')" id="btn-leads">🎯 Leads</button>
             <button onclick="switchView('cadastro')" id="btn-cadastro">👥 Cadastro</button>
             <button onclick="switchView('atendentes')" id="btn-atendentes">💼 Atendentes</button>
@@ -135,59 +144,68 @@
         </div>
     </section>
 
-    <section id="view-apontamento" class="view-section">
+    <section id="view-orcamentos" class="view-section">
         <div class="management-container">
             <div class="form-area" style="width: 450px;">
-                <h2>🕐 Registro de Apontamento</h2>
-                <form id="form-apontamento">
-                    <input type="hidden" id="apont-id">
-                    <label>Atendente *</label>
-                    <select id="apont-atendente" required><option value="">Selecione...</option></select>
-
+                <h2>🕐 Gestão de Orçamentos</h2>
+                <form id="form-orcamento">
+                    <input type="hidden" id="orc-id">
+                    
                     <label>Lead *</label>
-                    <select id="apont-lead" required onchange="populateHistSelect(this.value)"><option value="">Selecione...</option></select>
+                    <select id="orc-lead" required onchange="populateHistSelect(this.value)"><option value="">Selecione...</option></select>
 
-                    <label>Número do Histórico (Sequência) *</label>
-                    <select id="apont-hist-num" required><option value="">Selecione o Lead primeiro...</option></select>
+                    <label>Número do Histórico (Ref. Lead) *</label>
+                    <select id="orc-hist-num" required><option value="">Selecione o Lead...</option></select>
 
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div><label>Data/Hora Solicitado</label><input type="datetime-local" id="apont-solicitado"></div>
-                        <div><label>Data/Hora Prazo Final</label><input type="datetime-local" id="apont-prazo"></div>
-                    </div>
+                    <label>Atendente (Dono do Orçamento) *</label>
+                    <select id="orc-atendente" required><option value="">Selecione...</option></select>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div><label>Dia/Hora Início</label><input type="datetime-local" id="apont-inicio"></div>
-                        <div><label>Dia/Hora Fim</label><input type="datetime-local" id="apont-fim"></div>
+                        <div>
+                            <label>Data/Hora Solicitado</label>
+                            <input type="datetime-local" id="orc-solicitado" readonly class="readonly-field" title="Gerado automaticamente na criação">
+                        </div>
+                        <div>
+                            <label>Prazo Final</label>
+                            <input type="datetime-local" id="orc-prazo">
+                        </div>
                     </div>
 
-                    <label>Status</label>
-                    <select id="apont-status">
-                        <option value="Iniciado">Iniciado</option>
-                        <option value="Paralizado">Paralizado</option>
-                        <option value="Concluído">Concluído</option>
-                    </select>
+                    <label>Status Atual (Automático via Apontamentos)</label>
+                    <input type="text" id="orc-status-display" readonly class="readonly-field" value="Programado">
+                    <input type="hidden" id="orc-status-value" value="Programado">
 
-                    <label>Observações</label>
-                    <textarea id="apont-obs" style="height: 80px;"></textarea>
+                    <label>Observação Geral</label>
+                    <textarea id="orc-obs" style="height: 80px;"></textarea>
 
-                    <label>Data/Hora Atualização</label>
-                    <input type="text" id="apont-upd-display" readonly style="background:#f0f0f0;">
-
-                    <button type="submit" class="btn-save">Salvar Apontamento</button>
-                    <button type="button" onclick="limparFormApont()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar</button>
+                    <button type="submit" class="btn-save">Salvar Orçamento</button>
+                    <button type="button" onclick="limparFormOrcamento()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
                 </form>
             </div>
             <div class="list-area">
-                <h2>Lista de Apontamentos</h2>
+                <h2>Lista de Orçamentos</h2>
+                <div style="display:flex; gap:10px; margin-bottom:15px; background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #eee; align-items:flex-end;">
+                    <div style="flex:1"><label>Filtro Atendente</label><select id="f-orc-atend" onchange="renderTableOrcamentos()" style="margin:0"><option value="todos">Todos</option></select></div>
+                    <div style="flex:1"><label>Filtro Status</label>
+                        <select id="f-orc-status" onchange="renderTableOrcamentos()" style="margin:0">
+                            <option value="todos">Todos</option>
+                            <option value="Programado">Programado</option>
+                            <option value="Iniciado">Iniciado</option>
+                            <option value="Paralizado">Paralizado</option>
+                            <option value="Concluído">Concluído</option>
+                            <option value="Revisado">Revisado</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="table-wrapper">
-                    <table id="table-apontamentos">
+                    <table id="table-orcamentos">
                         <thead>
                             <tr>
                                 <th>Lead</th>
                                 <th>Atendente</th>
                                 <th>Status</th>
-                                <th>Fim</th>
-                                <th style="width:80px">Ações</th>
+                                <th>Prazo Final</th>
+                                <th style="width:140px; text-align:center;">Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -195,6 +213,60 @@
                 </div>
             </div>
         </div>
+
+        <dialog id="dialog-apontamento">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h3 style="margin:0">⏱️ Apontamento no Orçamento</h3>
+                <button onclick="document.getElementById('dialog-apontamento').close()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
+            </div>
+            <div id="modal-info-lead" style="font-weight:bold; color:var(--primary); margin-bottom:10px; font-size:0.9em;"></div>
+            
+            <form id="form-apontamento-item">
+                <input type="hidden" id="apt-orc-id"> <input type="hidden" id="apt-index-editing" value="-1"> <label>Atendente *</label>
+                <select id="apt-atendente" required></select>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <label>Dia/Hora Início *</label>
+                        <input type="datetime-local" id="apt-inicio" onchange="checkRegistro('inicio')">
+                    </div>
+                    <div>
+                        <label>Registro Início (Auto)</label>
+                        <input type="text" id="apt-reg-inicio" readonly class="readonly-field" placeholder="Automático...">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <label>Dia/Hora Fim</label>
+                        <input type="datetime-local" id="apt-fim" onchange="checkRegistro('fim')">
+                    </div>
+                    <div>
+                        <label>Registro Fim (Auto)</label>
+                        <input type="text" id="apt-reg-fim" readonly class="readonly-field" placeholder="Automático...">
+                    </div>
+                </div>
+
+                <label>Status * (Proibido 'Programado')</label>
+                <select id="apt-status" required>
+                    <option value="Programado" disabled>Programado</option>
+                    <option value="Iniciado">Iniciado</option>
+                    <option value="Paralizado">Paralizado</option>
+                    <option value="Concluído">Concluído</option>
+                    <option value="Revisado">Revisado</option>
+                </select>
+
+                <label>Observações</label>
+                <textarea id="apt-obs" style="height:60px;"></textarea>
+
+                <button type="submit" class="btn-save" style="background:#17a2b8; margin-top:10px;">Gravar Apontamento</button>
+            </form>
+
+            <div style="margin-top:20px; border-top:2px solid #eee; padding-top:10px;">
+                <h4 style="margin:0 0 10px 0; font-size:0.9em;">Histórico deste Orçamento</h4>
+                <div id="lista-historico-apontamentos" style="max-height:150px; overflow-y:auto;"></div>
+            </div>
+        </dialog>
     </section>
 
     <section id="view-leads" class="view-section">
@@ -434,7 +506,7 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaApontamentos=[], leadAtual=null, starFilters=[1,2,3];
+        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], leadAtual=null, orcamentoAtual=null, starFilters=[1,2,3];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
 
         function formatBR(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
@@ -504,15 +576,22 @@
         onSnapshot(collection(db, "atendentes"), (snap) => {
             listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
             const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
-            const selHist = document.getElementById('hist-atendente'); selHist.innerHTML = '<option value="">Selecione...</option>';
-            const selFunil = document.getElementById('f-funil-atend'); selFunil.innerHTML = '<option value="todos">Todos</option>';
-            const selDash = document.getElementById('dash-atendente'); selDash.innerHTML = '<option value="todos">Todos</option>';
-            const selApont = document.getElementById('apont-atendente'); selApont.innerHTML = '<option value="">Selecione...</option>';
+            
+            // Popula selects de Atendentes
+            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'orc-atendente', 'f-orc-atend', 'apt-atendente'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    const firstOption = el.querySelector('option');
+                    el.innerHTML = '';
+                    if(firstOption) el.appendChild(firstOption);
+                }
+            });
 
             listaAtendentes.forEach(a => {
                 tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
                 const opt = `<option value="${a.nome}">${a.nome}</option>`;
-                selHist.innerHTML += opt; selFunil.innerHTML += opt; selDash.innerHTML += opt; selApont.innerHTML += opt;
+                selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML += opt; });
             });
         });
 
@@ -535,26 +614,35 @@
         onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
             listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
             renderFunnel(); renderTableLeads();
-            const selApontLead = document.getElementById('apont-lead');
-            selApontLead.innerHTML = '<option value="">Selecione...</option>';
-            listaLeads.forEach(l => { selApontLead.innerHTML += `<option value="${l.id}">${l.numero_lead} - ${l.nome_cliente_cache}</option>`; });
+            const selOrcLead = document.getElementById('orc-lead');
+            selOrcLead.innerHTML = '<option value="">Selecione...</option>';
+            listaLeads.forEach(l => { selOrcLead.innerHTML += `<option value="${l.id}">${l.numero_lead} - ${l.nome_cliente_cache}</option>`; });
             
             if(document.getElementById('view-dashboard').classList.contains('active')) processarDashboard();
             if(leadAtual) {
                 const updated = listaLeads.find(l => l.id === leadAtual.id);
-                if(updated) { leadAtual = updated; renderArquivos(); }
+                if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); }
             }
         });
 
         onSnapshot(query(collection(db, "apontamentos"), orderBy("updated_at", "desc")), (snap) => {
-            listaApontamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
-            renderTableApontamentos();
+            listaOrcamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
+            renderTableOrcamentos();
+            
+            // Se o modal estiver aberto, atualiza a lista de histórico
+            if(document.getElementById('dialog-apontamento').open && orcamentoAtual) {
+                const updatedOrc = listaOrcamentos.find(o => o.id === orcamentoAtual.id);
+                if(updatedOrc) {
+                    orcamentoAtual = updatedOrc;
+                    renderHistoricoApontamentosNoModal();
+                }
+            }
         });
 
-        // --- FUNCIONALIDADES APONTAMENTO ---
+        // --- FUNCIONALIDADES ORÇAMENTOS & APONTAMENTOS ---
 
         window.populateHistSelect = (leadId) => {
-            const sel = document.getElementById('apont-hist-num');
+            const sel = document.getElementById('orc-hist-num');
             sel.innerHTML = '<option value="">Selecione...</option>';
             const lead = listaLeads.find(l => l.id === leadId);
             if(lead && lead.historico) {
@@ -564,75 +652,265 @@
             }
         };
 
-        document.getElementById('form-apontamento').onsubmit = async (e) => {
+        document.getElementById('form-orcamento').onsubmit = async (e) => {
             e.preventDefault();
-            const id = document.getElementById('apont-id').value;
-            const now = new Date().toLocaleString('pt-BR');
+            const id = document.getElementById('orc-id').value;
+            const now = new Date();
+            
             const data = {
-                atendente: document.getElementById('apont-atendente').value,
-                lead_id: document.getElementById('apont-lead').value,
-                hist_num: document.getElementById('apont-hist-num').value,
-                data_solicitado: document.getElementById('apont-solicitado').value,
-                data_prazo: document.getElementById('apont-prazo').value,
-                data_inicio: document.getElementById('apont-inicio').value,
-                data_fim: document.getElementById('apont-fim').value,
-                status: document.getElementById('apont-status').value,
-                observacoes: document.getElementById('apont-obs').value,
-                updated_at: serverTimestamp(),
-                updated_at_str: now
+                atendente: document.getElementById('orc-atendente').value,
+                lead_id: document.getElementById('orc-lead').value,
+                hist_num: document.getElementById('orc-hist-num').value,
+                data_prazo: document.getElementById('orc-prazo').value,
+                observacoes: document.getElementById('orc-obs').value,
+                updated_at: serverTimestamp()
             };
-            if(id) await updateDoc(doc(db, "apontamentos", id), data);
-            else await addDoc(collection(db, "apontamentos"), data);
-            limparFormApont();
-            alert("Apontamento salvo!");
+
+            if(!id) {
+                const offset = now.getTimezoneOffset() * 60000; 
+                const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+                data.data_solicitado = localISOTime;
+                data.status = "Programado"; 
+                data.historico_trabalhos = []; 
+                await addDoc(collection(db, "apontamentos"), data);
+                alert("Orçamento criado com sucesso!");
+            } else {
+                await updateDoc(doc(db, "apontamentos", id), data);
+                alert("Orçamento atualizado!");
+            }
+            limparFormOrcamento();
         };
 
-        window.renderTableApontamentos = () => {
-            const tb = document.querySelector('#table-apontamentos tbody');
+        window.renderTableOrcamentos = () => {
+            const tb = document.querySelector('#table-orcamentos tbody');
+            const fAtend = document.getElementById('f-orc-atend').value;
+            const fStatus = document.getElementById('f-orc-status').value;
             tb.innerHTML = '';
-            listaApontamentos.forEach(a => {
-                const lead = listaLeads.find(l => l.id === a.lead_id);
+            
+            listaOrcamentos.forEach(orc => {
+                if(fAtend !== 'todos' && orc.atendente !== fAtend) return;
+                if(fStatus !== 'todos' && orc.status !== fStatus) return;
+                
+                const lead = listaLeads.find(l => l.id === orc.lead_id);
+                const statusCor = orc.status === 'Programado' ? '#6c757d' : (orc.status === 'Concluído' ? '#28a745' : '#17a2b8');
+                
                 tb.innerHTML += `
-                    <tr onclick="editarApont('${a.id}')">
-                        <td>${lead ? lead.numero_lead : 'N/A'}</td>
-                        <td>${a.atendente}</td>
-                        <td>${a.status}</td>
-                        <td>${formatBR(a.data_fim)}</td>
-                        <td>
-                            <button class="btn-icon" onclick="event.stopPropagation(); editarApont('${a.id}')">✏️</button>
-                            <button class="btn-icon" onclick="event.stopPropagation(); excluirApont('${a.id}')" style="color:red">🗑️</button>
+                    <tr onclick="editarOrcamento('${orc.id}')">
+                        <td>${lead ? lead.numero_lead : 'N/A'} - ${lead ? lead.nome_cliente_cache : ''}</td>
+                        <td>${orc.atendente}</td>
+                        <td><span class="stage-tag" style="background:${statusCor}">${orc.status}</span></td>
+                        <td>${formatBR(orc.data_prazo)}</td>
+                        <td style="text-align:center;">
+                            <div class="btn-group-row">
+                                <button class="btn-icon" onclick="event.stopPropagation(); abrirApontamento('${orc.id}')" title="Apontar Horas/Status">🕒</button>
+                                <button class="btn-icon" onclick="event.stopPropagation(); abrirLeadDoOrcamento('${orc.id}')" title="Ir para o Lead">🎯</button>
+                                <span style="margin:0 2px; color:#ddd">|</span>
+                                <button class="btn-icon" onclick="event.stopPropagation(); editarOrcamento('${orc.id}')" title="Editar Orçamento">✏️</button>
+                                <button class="btn-icon" onclick="event.stopPropagation(); excluirOrcamento('${orc.id}')" style="color:red" title="Excluir Orçamento">🗑️</button>
+                            </div>
                         </td>
                     </tr>`;
             });
         };
 
-        window.editarApont = (id) => {
-            const a = listaApontamentos.find(x => x.id === id);
-            document.getElementById('apont-id').value = a.id;
-            document.getElementById('apont-atendente').value = a.atendente;
-            document.getElementById('apont-lead').value = a.lead_id;
-            populateHistSelect(a.lead_id);
-            document.getElementById('apont-hist-num').value = a.hist_num;
-            document.getElementById('apont-solicitado').value = a.data_solicitado || '';
-            document.getElementById('apont-prazo').value = a.data_prazo || '';
-            document.getElementById('apont-inicio').value = a.data_inicio || '';
-            document.getElementById('apont-fim').value = a.data_fim || '';
-            document.getElementById('apont-status').value = a.status;
-            document.getElementById('apont-obs').value = a.observacoes || '';
-            document.getElementById('apont-upd-display').value = a.updated_at_str || '-';
+        window.abrirLeadDoOrcamento = (orcId) => {
+            const orc = listaOrcamentos.find(x => x.id === orcId);
+            if(orc && orc.lead_id) {
+                editarLead(orc.lead_id);
+            } else {
+                alert("Orçamento sem lead vinculado.");
+            }
         };
 
-        window.limparFormApont = () => {
-            document.getElementById('form-apontamento').reset();
-            document.getElementById('apont-id').value = '';
-            document.getElementById('apont-upd-display').value = '';
+        window.editarOrcamento = (id) => {
+            const orc = listaOrcamentos.find(x => x.id === id);
+            document.getElementById('orc-id').value = orc.id;
+            document.getElementById('orc-lead').value = orc.lead_id;
+            populateHistSelect(orc.lead_id);
+            document.getElementById('orc-hist-num').value = orc.hist_num;
+            document.getElementById('orc-atendente').value = orc.atendente;
+            document.getElementById('orc-solicitado').value = orc.data_solicitado || '';
+            document.getElementById('orc-prazo').value = orc.data_prazo || '';
+            document.getElementById('orc-status-display').value = orc.status;
+            document.getElementById('orc-obs').value = orc.observacoes || '';
         };
 
-        window.excluirApont = async (id) => {
-            if(confirm("Excluir este apontamento?")) await deleteDoc(doc(db, "apontamentos", id));
+        window.limparFormOrcamento = () => {
+            document.getElementById('form-orcamento').reset();
+            document.getElementById('orc-id').value = '';
+            document.getElementById('orc-status-display').value = "Programado (Novo)";
         };
 
-        // --- RESTANTE DAS FUNÇÕES ORIGINAIS ---
+        window.excluirOrcamento = async (id) => {
+            if(confirm("Excluir este Orçamento e todo seu histórico?")) await deleteDoc(doc(db, "apontamentos", id));
+        };
+
+        // --- LÓGICA DO MODAL DE APONTAMENTOS (FILHO) ---
+
+        window.abrirApontamento = (id) => {
+            orcamentoAtual = listaOrcamentos.find(x => x.id === id);
+            if(!orcamentoAtual) return;
+
+            const lead = listaLeads.find(l => l.id === orcamentoAtual.lead_id);
+            document.getElementById('modal-info-lead').innerText = `Lead: ${lead ? lead.numero_lead : '?'} | Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
+            document.getElementById('apt-orc-id').value = id;
+            
+            limparFormApontamentoItem();
+            const historico = orcamentoAtual.historico_trabalhos || [];
+            const ultimoApont = historico.length > 0 ? historico[historico.length - 1] : null;
+
+            // Verificar se o último apontamento está "aberto" (Tem Início mas não tem Fim)
+            let abrirEmModoEdicao = false;
+            
+            if (ultimoApont) {
+                const temInicio = ultimoApont.inicio && ultimoApont.inicio !== "";
+                const temFim = ultimoApont.fim && ultimoApont.fim !== "";
+                
+                if (temInicio && !temFim) {
+                    abrirEmModoEdicao = true;
+                }
+            }
+
+            if (abrirEmModoEdicao) {
+                // Modo: Fechar o apontamento anterior
+                const idx = historico.length - 1;
+                document.getElementById('apt-index-editing').value = idx;
+                
+                document.getElementById('apt-atendente').value = ultimoApont.atendente;
+                document.getElementById('apt-inicio').value = ultimoApont.inicio;
+                document.getElementById('apt-reg-inicio').value = ultimoApont.reg_inicio || "";
+                document.getElementById('apt-reg-inicio').setAttribute('data-real-value', ultimoApont.reg_inicio || ""); // Preserva original
+                
+                document.getElementById('apt-fim').value = ""; // Usuário deve preencher
+                document.getElementById('apt-reg-fim').value = "";
+                
+                document.getElementById('apt-status').value = ultimoApont.status;
+                document.getElementById('apt-obs').value = ultimoApont.obs || "";
+
+                alert("O apontamento anterior está em aberto. Por favor, encerre-o preenchendo a Data/Hora Fim.");
+            } else {
+                // Modo: Novo Apontamento
+                document.getElementById('apt-index-editing').value = "-1";
+                
+                // Sugere atendente
+                let defaultAtendente = orcamentoAtual.atendente;
+                if(ultimoApont) defaultAtendente = ultimoApont.atendente;
+                document.getElementById('apt-atendente').value = defaultAtendente;
+            }
+
+            renderHistoricoApontamentosNoModal();
+            document.getElementById('dialog-apontamento').showModal();
+        };
+
+        window.checkRegistro = (tipo) => {
+            const campoData = document.getElementById('apt-' + tipo).value;
+            const campoReg = document.getElementById('apt-reg-' + tipo);
+            
+            // Só atualiza visualmente se não estiver editando um registro que já tinha valor salvo
+            const existingVal = campoReg.getAttribute('data-real-value');
+            
+            if(campoData && !existingVal) {
+                if(!campoReg.value) {
+                    const now = new Date();
+                    campoReg.value = now.toLocaleString('pt-BR') + " (Será salvo)";
+                }
+            }
+        };
+
+        document.getElementById('form-apontamento-item').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            // Validações
+            const inicioVal = document.getElementById('apt-inicio').value;
+            if (!inicioVal) {
+                alert("O campo Dia/Hora Início é obrigatório.");
+                return;
+            }
+
+            const statusVal = document.getElementById('apt-status').value;
+            if (statusVal === 'Programado') {
+                alert("Não é permitido salvar com o status 'Programado'. Selecione Iniciado, Concluído, etc.");
+                return;
+            }
+
+            const orcId = document.getElementById('apt-orc-id').value;
+            const indexEditing = parseInt(document.getElementById('apt-index-editing').value);
+            const now = new Date().toLocaleString('pt-BR');
+
+            // Preparar objeto do item
+            const item = {
+                atendente: document.getElementById('apt-atendente').value,
+                inicio: document.getElementById('apt-inicio').value,
+                // Se já tinha reg_inicio salvo (edição), mantém. Se não, usa o hidden data ou data atual
+                reg_inicio: document.getElementById('apt-reg-inicio').getAttribute('data-real-value') || now, 
+                fim: document.getElementById('apt-fim').value,
+                reg_fim: document.getElementById('apt-reg-fim').getAttribute('data-real-value') || (document.getElementById('apt-fim').value ? now : ""),
+                status: statusVal,
+                obs: document.getElementById('apt-obs').value,
+                timestamp: new Date().toISOString() // Metadata
+            };
+
+            // Atualiza array do Orçamento
+            let historico = orcamentoAtual.historico_trabalhos || [];
+
+            if (indexEditing >= 0) {
+                // Atualizando item existente (fechando o aberto)
+                // Preserva o reg_inicio original se existir no objeto antigo, caso a lógica acima falhe
+                if(historico[indexEditing].reg_inicio) item.reg_inicio = historico[indexEditing].reg_inicio;
+                historico[indexEditing] = item;
+            } else {
+                // Adicionando novo
+                historico.push(item);
+            }
+
+            await updateDoc(doc(db, "apontamentos", orcId), {
+                historico_trabalhos: historico,
+                status: item.status, 
+                updated_at: serverTimestamp()
+            });
+
+            limparFormApontamentoItem();
+            // Mantém modal aberto e recarrega lista (via snapshot listener que chamará render)
+            // Mas fechamos o modal se for edição para evitar confusão ou resetamos para novo?
+            // Melhor resetar para novo.
+            document.getElementById('apt-index-editing').value = "-1";
+            alert("Apontamento registrado!");
+        };
+
+        window.limparFormApontamentoItem = () => {
+            document.getElementById('form-apontamento-item').reset();
+            document.getElementById('apt-reg-inicio').value = "";
+            document.getElementById('apt-reg-inicio').removeAttribute('data-real-value');
+            document.getElementById('apt-reg-fim').value = "";
+            document.getElementById('apt-reg-fim').removeAttribute('data-real-value');
+            document.getElementById('apt-index-editing').value = "-1";
+        };
+
+        window.renderHistoricoApontamentosNoModal = () => {
+            const div = document.getElementById('lista-historico-apontamentos');
+            div.innerHTML = '';
+            
+            if(!orcamentoAtual.historico_trabalhos || orcamentoAtual.historico_trabalhos.length === 0) {
+                div.innerHTML = '<p style="color:#888; text-align:center;">Nenhum apontamento ainda.</p>';
+                return;
+            }
+
+            const listaInvertida = [...orcamentoAtual.historico_trabalhos].reverse();
+
+            listaInvertida.forEach((h, idx) => {
+                const seq = orcamentoAtual.historico_trabalhos.length - idx;
+                div.innerHTML += `
+                    <div class="hist-list-item">
+                        <strong>#${seq} - ${h.atendente}</strong> <span class="stage-tag">${h.status}</span><br>
+                        Início: ${formatBR(h.inicio)} <small style="color:#666">(Reg: ${h.reg_inicio || '-'})</small><br>
+                        Fim: ${formatBR(h.fim)} <small style="color:#666">(Reg: ${h.reg_fim || '-'})</small><br>
+                        <em>${h.obs || ''}</em>
+                    </div>
+                `;
+            });
+        };
+
+        // --- RESTANTE DAS FUNÇÕES ORIGINAIS (Mantidas) ---
 
         window.handleFileUpload = async (files) => {
             if(!leadAtual) return alert("Salve os dados básicos antes de enviar arquivos.");
@@ -872,7 +1150,20 @@
                 const btnNovo = (indexInTimeline === 0) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado neste">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? contactData.telefone.replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
-                div.innerHTML += `<div class="timeline-item"><div class="seq-badge">${h.idx + 1}</div><div class="tl-header"><span class="stage-tag">${h.etapa}</span><div><button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>${btnNovo}<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button></div></div><span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br><span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 📅 Operação: ${h.data_operacao || '-'} | 🏁 Status: ${h.resultado || '-'}</span><div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div></div>`; 
+                
+                div.innerHTML += `<div class="timeline-item">
+                    <div class="seq-badge">${h.idx + 1}</div>
+                    <div class="tl-header">
+                        <span class="stage-tag">${h.etapa}</span>
+                        <div><button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>${btnNovo}<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button></div>
+                    </div>
+                    <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br>
+                    <span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 📅 Operação: ${h.data_operacao || '-'} | 🏁 Status: ${h.resultado || '-'}</span>
+                    <div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;">
+                        <b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br>
+                        <i>${h.resumo}</i>
+                    </div>
+                </div>`; 
             }); 
         };
 
