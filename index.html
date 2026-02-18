@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V14.1 (Orçamentos)</title>
+    <title>Perfecta CRM - V15.0 (Full Star)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
             --primary: #007bff; --bg: #e9eef2; --text: #333;
             --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8;
+            --purple: #6f42c1; --teal: #20c997; --orange: #fd7e14;
         }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; }
         
@@ -31,13 +32,11 @@
         
         .contact-info-display { font-size: 0.75em; color: #007bff; margin-top: -10px; margin-bottom: 10px; display: block; min-height: 1em; }
 
-        /* Estilo para Blocos de Obra */
         .obra-section { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #eee; }
         .pvc-bg { background-color: #f0f7ff; border-left: 5px solid #007bff; }
         .alu-bg { background-color: #fff4e5; border-left: 5px solid #fd7e14; }
         .obra-title { grid-column: span 2; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; color: #444; text-transform: uppercase; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 5px; }
 
-        /* Funil */
         .funnel-filters { background: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; display: flex; gap: 15px; flex-wrap: wrap; font-size: 0.85em; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .funnel-filters label { margin: 0; display: flex; align-items: center; gap: 4px; font-weight: normal; }
         
@@ -65,13 +64,14 @@
         .tl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
         .stage-tag { background: #333; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; text-transform: uppercase; }
         .btn-del-hist { background: none; border: none; cursor: pointer; font-size: 1.1em; color: #dc3545; }
+        
+        .orc-integration-box { margin-top: 8px; background: #eef6fc; border: 1px solid #d1e7fa; border-radius: 4px; padding: 6px; font-size: 0.8em; color: #0056b3; cursor: pointer; }
+        .orc-integration-box:hover { background: #dceefc; }
 
-        /* Estilos Arquivos */
         .file-item { display: flex; align-items: center; justify-content: space-between; background: #f8f9fa; padding: 8px; border-radius: 4px; margin-bottom: 5px; border: 1px solid #eee; font-size: 0.85em; }
         .file-name { color: var(--primary); text-decoration: none; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
         .file-name:hover { text-decoration: underline; }
 
-        /* Dashboard */
         .dashboard-grid { overflow-y: auto; padding-bottom: 20px; height: 100%; display: flex; flex-direction: column; }
         .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; flex-shrink: 0; }
         .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-shrink: 0; margin-bottom: 15px; }
@@ -88,20 +88,48 @@
         td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
         tr:hover { background-color: #f8f9fa; cursor: pointer; }
 
-        /* Estilos Exclusivos para a nova aba Orçamentos/Modal */
         #dialog-apontamento { border: none; border-radius: 8px; padding: 20px; width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         #dialog-apontamento::backdrop { background: rgba(0,0,0,0.5); }
         .readonly-field { background-color: #e9ecef; color: #6c757d; cursor: not-allowed; }
         .hist-list-item { font-size: 0.8em; padding: 8px; border-bottom: 1px solid #eee; background: #fafafa; margin-bottom: 4px; }
         
-        /* NOVO: Classe para alinhar botões na tabela */
         .btn-group-row { display: flex; gap: 8px; justify-content: center; align-items: center; white-space: nowrap; }
+        .status-badge-funnel { display:inline-block; margin-top:3px; padding: 2px 5px; border-radius: 3px; font-size: 0.75em; background: #eee; border: 1px solid #ddd; color: #555; font-weight: 500; }
+        
+        .filter-panel { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #eee; margin-bottom: 15px; font-size: 0.85em; }
+        .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .filter-item { flex: 1; min-width: 150px; }
+        .filter-check-group { display: flex; gap: 15px; padding: 5px 0; }
+
+        .hist-mini-card { 
+            background: #fdfdfd; 
+            border: 1px solid #eee; 
+            border-left: 3px solid var(--info); 
+            padding: 6px 12px; 
+            margin-top: 5px; 
+            border-radius: 4px; 
+            font-size: 0.85em; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .hist-mini-card:hover { background: #f0f7ff; }
+
+        .actions-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            height: 100%;
+        }
     </style>
 </head>
 <body>
 
     <nav>
-        <div class="brand">Perfecta CRM v14.1</div>
+        <div class="brand">Perfecta CRM v15.0</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
             <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
@@ -125,13 +153,15 @@
                     <option value="sem" selected>Não</option>
                 </select>
             </label>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; border-left:1px solid #ddd; padding-left:10px;">
                 <label><input type="checkbox" checked onchange="toggleStarFilter(1)"> 1⭐</label>
                 <label><input type="checkbox" checked onchange="toggleStarFilter(2)"> 2⭐</label>
                 <label><input type="checkbox" checked onchange="toggleStarFilter(3)"> 3⭐</label>
+                <label><input type="checkbox" checked onchange="toggleStarFilter(4)"> 4⭐</label>
+                <label><input type="checkbox" checked onchange="toggleStarFilter(5)"> 5⭐</label>
             </div>
             <label style="margin-left:10px; border-left:1px solid #ddd; padding-left:15px; color:var(--primary); font-weight:bold;">
-                <input type="checkbox" id="f-funil-all" onchange="renderFunnel()" checked> Exibir Histórico Completo
+                <input type="checkbox" id="f-funil-all" onchange="renderFunnel()" checked> Hist. Completo
             </label>
         </div>
         <div class="board">
@@ -147,65 +177,113 @@
     <section id="view-orcamentos" class="view-section">
         <div class="management-container">
             <div class="form-area" style="width: 450px;">
-                <h2>🕐 Gestão de Orçamentos</h2>
-                <form id="form-orcamento">
-                    <input type="hidden" id="orc-id">
+                <h2>⏱️ Novo Apontamento</h2>
+                <form id="form-apontamento-direto">
+                    <input type="hidden" id="apt-orc-id-direto">
+                    <input type="hidden" id="apt-index-editing-direto" value="-1"> 
                     
-                    <label>Lead *</label>
-                    <select id="orc-lead" required onchange="populateHistSelect(this.value)"><option value="">Selecione...</option></select>
+                    <label>Lead / Orçamento *</label>
+                    <select id="orc-lead-direto" required onchange="populateHistSelectDireto(this.value)"><option value="">Selecione...</option></select>
 
-                    <label>Número do Histórico (Ref. Lead) *</label>
-                    <select id="orc-hist-num" required><option value="">Selecione o Lead...</option></select>
+                    <label>Histórico (Ref. Lead) *</label>
+                    <select id="apt-hist-ref-direto" required></select>
 
-                    <label>Atendente (Dono do Orçamento) *</label>
-                    <select id="orc-atendente" required><option value="">Selecione...</option></select>
+                    <label>ID Orçamento (Max 10 caracteres)</label>
+                    <input type="text" id="apt-id-externo-direto" maxlength="10" placeholder="Ex: ORC-123">
+
+                    <label>Atendente *</label>
+                    <select id="apt-atendente-direto" required></select>
+
+                    <label id="lbl-prazo-direto">Prazo Final *</label>
+                    <input type="datetime-local" id="apt-prazo-direto">
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                         <div>
-                            <label>Data/Hora Solicitado</label>
-                            <input type="datetime-local" id="orc-solicitado" readonly class="readonly-field" title="Gerado automaticamente na criação">
+                            <label>Dia/Hora Início</label>
+                            <input type="datetime-local" id="apt-inicio-direto" onchange="checkRegistroDireto('inicio')">
                         </div>
                         <div>
-                            <label>Prazo Final</label>
-                            <input type="datetime-local" id="orc-prazo">
+                            <label>Registro Início (Auto)</label>
+                            <input type="text" id="apt-reg-inicio-direto" readonly class="readonly-field" placeholder="Automático...">
                         </div>
                     </div>
 
-                    <label>Status Atual (Automático via Apontamentos)</label>
-                    <input type="text" id="orc-status-display" readonly class="readonly-field" value="Programado">
-                    <input type="hidden" id="orc-status-value" value="Programado">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <label>Dia/Hora Fim</label>
+                            <input type="datetime-local" id="apt-fim-direto" onchange="checkRegistroDireto('fim')">
+                        </div>
+                        <div>
+                            <label>Registro Fim (Auto)</label>
+                            <input type="text" id="apt-reg-fim-direto" readonly class="readonly-field" placeholder="Automático...">
+                        </div>
+                    </div>
 
-                    <label>Observação Geral</label>
-                    <textarea id="orc-obs" style="height: 80px;"></textarea>
+                    <label>Status *</label>
+                    <select id="apt-status-direto" required onchange="togglePrazoRequirement(this.value)">
+                        <option value="Programado">Programado</option>
+                        <option value="Iniciado">Iniciado</option>
+                        <option value="Paralizado">Paralizado</option>
+                        <option value="Concluído">Concluído</option>
+                        <option value="Revisado">Revisado</option>
+                        <option value="Enviado">Enviado</option>
+                        <option value="Apresentação">Apresentação</option>
+                        <option value="Solicitado Alteração">Solicitado Alteração</option>
+                    </select>
 
-                    <button type="submit" class="btn-save">Salvar Orçamento</button>
-                    <button type="button" onclick="limparFormOrcamento()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
+                    <label>Observações</label>
+                    <textarea id="apt-obs-direto" style="height:60px;"></textarea>
+
+                    <button type="submit" class="btn-save" style="background:#17a2b8;">Gravar Apontamento</button>
+                    <button type="button" onclick="limparFormApontamentoDireto()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
                 </form>
             </div>
             <div class="list-area">
-                <h2>Lista de Orçamentos</h2>
-                <div style="display:flex; gap:10px; margin-bottom:15px; background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #eee; align-items:flex-end;">
-                    <div style="flex:1"><label>Filtro Atendente</label><select id="f-orc-atend" onchange="renderTableOrcamentos()" style="margin:0"><option value="todos">Todos</option></select></div>
-                    <div style="flex:1"><label>Filtro Status</label>
-                        <select id="f-orc-status" onchange="renderTableOrcamentos()" style="margin:0">
-                            <option value="todos">Todos</option>
-                            <option value="Programado">Programado</option>
-                            <option value="Iniciado">Iniciado</option>
-                            <option value="Paralizado">Paralizado</option>
-                            <option value="Concluído">Concluído</option>
-                            <option value="Revisado">Revisado</option>
-                        </select>
+                <h2 id="titulo-lista-apontamentos">Lista de Apontamentos</h2>
+                
+                <div class="filter-panel">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label>Lead / Cliente</label>
+                            <select id="f-orc-lead" onchange="renderTableOrcamentos()">
+                                <option value="todos">Todos os Leads</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Atendente</label>
+                            <select id="f-orc-atend" onchange="renderTableOrcamentos()">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Status</label>
+                            <select id="f-orc-status" onchange="renderTableOrcamentos()">
+                                <option value="todos">Todos os Status</option>
+                                <option value="Programado">Programado</option>
+                                <option value="Iniciado">Iniciado</option>
+                                <option value="Paralizado">Paralizado</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Revisado">Revisado</option>
+                                <option value="Enviado">Enviado</option>
+                                <option value="Apresentação">Apresentação</option>
+                                <option value="Solicitado Alteração">Solicitado Alteração</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-check-group">
+                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-start" onchange="renderTableOrcamentos()" style="width: auto; margin-right: 8px;"> Início não apontado</label>
+                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-end" onchange="renderTableOrcamentos()" style="width: auto; margin-right: 8px;"> Fim não apontado</label>
                     </div>
                 </div>
+
                 <div class="table-wrapper">
                     <table id="table-orcamentos">
                         <thead>
                             <tr>
-                                <th>Lead</th>
-                                <th>Atendente</th>
-                                <th>Status</th>
-                                <th>Prazo Final</th>
-                                <th style="width:140px; text-align:center;">Ações</th>
+                                <th style="width:230px;">Lead / ID</th>
+                                <th style="width:100px;">Ref. Lead</th>
+                                <th>Histórico de Trabalhos</th>
+                                <th style="width:110px; text-align:center;">Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -213,61 +291,16 @@
                 </div>
             </div>
         </div>
-
-        <dialog id="dialog-apontamento">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                <h3 style="margin:0">⏱️ Apontamento no Orçamento</h3>
-                <button onclick="document.getElementById('dialog-apontamento').close()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
-            </div>
-            <div id="modal-info-lead" style="font-weight:bold; color:var(--primary); margin-bottom:10px; font-size:0.9em;"></div>
-            
-            <form id="form-apontamento-item">
-                <input type="hidden" id="apt-orc-id"> <input type="hidden" id="apt-index-editing" value="-1"> <label>Atendente *</label>
-                <select id="apt-atendente" required></select>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div>
-                        <label>Dia/Hora Início *</label>
-                        <input type="datetime-local" id="apt-inicio" onchange="checkRegistro('inicio')">
-                    </div>
-                    <div>
-                        <label>Registro Início (Auto)</label>
-                        <input type="text" id="apt-reg-inicio" readonly class="readonly-field" placeholder="Automático...">
-                    </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div>
-                        <label>Dia/Hora Fim</label>
-                        <input type="datetime-local" id="apt-fim" onchange="checkRegistro('fim')">
-                    </div>
-                    <div>
-                        <label>Registro Fim (Auto)</label>
-                        <input type="text" id="apt-reg-fim" readonly class="readonly-field" placeholder="Automático...">
-                    </div>
-                </div>
-
-                <label>Status * (Proibido 'Programado')</label>
-                <select id="apt-status" required>
-                    <option value="Programado" disabled>Programado</option>
-                    <option value="Iniciado">Iniciado</option>
-                    <option value="Paralizado">Paralizado</option>
-                    <option value="Concluído">Concluído</option>
-                    <option value="Revisado">Revisado</option>
-                </select>
-
-                <label>Observações</label>
-                <textarea id="apt-obs" style="height:60px;"></textarea>
-
-                <button type="submit" class="btn-save" style="background:#17a2b8; margin-top:10px;">Gravar Apontamento</button>
-            </form>
-
-            <div style="margin-top:20px; border-top:2px solid #eee; padding-top:10px;">
-                <h4 style="margin:0 0 10px 0; font-size:0.9em;">Histórico deste Orçamento</h4>
-                <div id="lista-historico-apontamentos" style="max-height:150px; overflow-y:auto;"></div>
-            </div>
-        </dialog>
     </section>
+
+    <dialog id="dialog-apontamento">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h3 style="margin:0">⏱️ Detalhes do Apontamento</h3>
+            <button onclick="document.getElementById('dialog-apontamento').close()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+        <div id="modal-info-lead" style="font-weight:bold; color:var(--primary); margin-bottom:10px; font-size:0.9em;"></div>
+        <div id="lista-historico-apontamentos" style="max-height:400px; overflow-y:auto;"></div>
+    </dialog>
 
     <section id="view-leads" class="view-section">
         <div class="management-container">
@@ -369,6 +402,8 @@
                             <option value="1">⭐ 1 Estrela</option>
                             <option value="2">⭐⭐ 2 Estrelas</option>
                             <option value="3">⭐⭐⭐ 3 Estrelas</option>
+                            <option value="4">⭐⭐⭐⭐ 4 Estrelas</option>
+                            <option value="5">⭐⭐⭐⭐⭐ 5 Estrelas</option>
                         </select>
                         <div style="display:flex; gap:10px;">
                             <div style="flex:1"><label>Programado</label><input type="datetime-local" id="hist-prog"></div>
@@ -393,15 +428,36 @@
             </div>
             <div class="list-area">
                 <h2>Leads</h2>
+                
+                <div class="filter-panel" style="margin-bottom:15px; padding:10px; background:#f8f9fa; border:1px solid #eee; border-radius:6px;">
+                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="flex:1; min-width: 200px;">
+                            <label>Filtrar Cliente:</label>
+                            <input type="text" id="f-leads-cliente" oninput="renderTableLeads()" placeholder="Nome do cliente..." style="margin-bottom:0;">
+                        </div>
+                        <div style="width:200px; min-width:150px;">
+                            <label>Filtrar Etapa:</label>
+                            <select id="f-leads-etapa" onchange="renderTableLeads()" style="margin-bottom:0;">
+                                <option value="todos">Todas</option>
+                                <option value="novo">Novo</option>
+                                <option value="contatado">Contato</option>
+                                <option value="orcamento">Orçamento</option>
+                                <option value="negociacao">Negociação</option>
+                                <option value="fechado">Fechado</option>
+                                <option value="perdido">Perdido</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-wrapper">
                     <table id="table-leads">
                         <thead>
                             <tr>
-                                <th>#</th>
                                 <th>Desde</th>
-                                <th>Cliente</th>
+                                <th style="cursor:pointer; user-select:none;" onclick="toggleLeadSort()" title="Clique para ordenar">Cliente ↕️</th>
                                 <th>Etapa</th>
-                                <th style="width:110px">Ações</th>
+                                <th style="width:140px; text-align:center;">Ações</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -506,14 +562,15 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], leadAtual=null, orcamentoAtual=null, starFilters=[1,2,3];
+        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
+        
+        // Estado de ordenação da tabela de leads
+        let leadSortAsc = false;
 
         function formatBR(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
         
-        // --- LÓGICA DE MÁSCARAS ---
         const cleanNum = (v) => v.replace(/\D/g, "");
-
         const applyMasks = () => {
             document.querySelectorAll('.mask-m2').forEach(el => {
                 el.addEventListener('input', (e) => {
@@ -571,23 +628,11 @@
             span.innerText = item ? `📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "";
         };
 
-        // --- LISTENERS FIREBASE ---
-
         onSnapshot(collection(db, "atendentes"), (snap) => {
             listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
             const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
-            
-            // Popula selects de Atendentes
-            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'orc-atendente', 'f-orc-atend', 'apt-atendente'];
-            selects.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    const firstOption = el.querySelector('option');
-                    el.innerHTML = '';
-                    if(firstOption) el.appendChild(firstOption);
-                }
-            });
-
+            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend'];
+            selects.forEach(id => { const el = document.getElementById(id); if(el) { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
             listaAtendentes.forEach(a => {
                 tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
                 const opt = `<option value="${a.nome}">${a.nome}</option>`;
@@ -599,10 +644,7 @@
             listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
             const tb = document.querySelector('#table-clientes tbody'); tb.innerHTML = '';
             const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
-            selects.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.innerHTML = '<option value="">Selecione...</option>';
-            });
+            selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = '<option value="">Selecione...</option>'; });
             listaClientes.forEach(c => {
                 tb.innerHTML += `<tr onclick="editarCli('${c.id}')" style="cursor:pointer"><td>${c.nome_empresa}</td><td>${c.tipo||'Cliente'}</td><td>${c.cidade||''}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button></td></tr>`;
                 const opt = `<option value="${c.id}">${c.nome_empresa}</option>`;
@@ -614,303 +656,320 @@
         onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
             listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
             renderFunnel(); renderTableLeads();
-            const selOrcLead = document.getElementById('orc-lead');
-            selOrcLead.innerHTML = '<option value="">Selecione...</option>';
-            listaLeads.forEach(l => { selOrcLead.innerHTML += `<option value="${l.id}">${l.numero_lead} - ${l.nome_cliente_cache}</option>`; });
+            const selOrcLead = document.getElementById('orc-lead-direto');
+            const filOrcLead = document.getElementById('f-orc-lead');
             
-            if(document.getElementById('view-dashboard').classList.contains('active')) processarDashboard();
-            if(leadAtual) {
-                const updated = listaLeads.find(l => l.id === leadAtual.id);
-                if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); }
-            }
+            selOrcLead.innerHTML = '<option value="">Selecione...</option>';
+            filOrcLead.innerHTML = '<option value="todos">Todos os Leads</option>';
+
+            listaLeads.forEach(l => { 
+                const opt = `<option value="${l.id}">${l.numero_lead} - ${l.nome_cliente_cache}</option>`;
+                selOrcLead.innerHTML += opt;
+                filOrcLead.innerHTML += opt;
+            });
+            if(leadAtual) { const updated = listaLeads.find(l => l.id === leadAtual.id); if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); } }
         });
 
         onSnapshot(query(collection(db, "apontamentos"), orderBy("updated_at", "desc")), (snap) => {
             listaOrcamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
             renderTableOrcamentos();
-            
-            // Se o modal estiver aberto, atualiza a lista de histórico
-            if(document.getElementById('dialog-apontamento').open && orcamentoAtual) {
-                const updatedOrc = listaOrcamentos.find(o => o.id === orcamentoAtual.id);
-                if(updatedOrc) {
-                    orcamentoAtual = updatedOrc;
-                    renderHistoricoApontamentosNoModal();
-                }
-            }
+            renderFunnel(); 
         });
 
-        // --- FUNCIONALIDADES ORÇAMENTOS & APONTAMENTOS ---
+        window.togglePrazoRequirement = (status) => {
+            const inputPrazo = document.getElementById('apt-prazo-direto');
+            const lblPrazo = document.getElementById('lbl-prazo-direto');
+            if(status === 'Programado' || status === 'Solicitado Alteração') {
+                inputPrazo.required = true;
+                lblPrazo.innerText = "Prazo Final *";
+            } else {
+                inputPrazo.required = false;
+                lblPrazo.innerText = "Prazo Final";
+            }
+        };
 
-        window.populateHistSelect = (leadId) => {
-            const sel = document.getElementById('orc-hist-num');
+        window.populateHistSelectDireto = (leadId) => {
+            const sel = document.getElementById('apt-hist-ref-direto');
             sel.innerHTML = '<option value="">Selecione...</option>';
             const lead = listaLeads.find(l => l.id === leadId);
             if(lead && lead.historico) {
                 lead.historico.forEach((h, idx) => {
-                    sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`;
+                    if (h.etapa === 'orcamento') {
+                        sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`;
+                    }
                 });
+            }
+            const orc = listaOrcamentos.find(o => o.lead_id === leadId);
+            if(orc) {
+                document.getElementById('apt-orc-id-direto').value = orc.id;
+                document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
+            } else {
+                document.getElementById('apt-orc-id-direto').value = "";
+                document.getElementById('apt-id-externo-direto').value = "";
             }
         };
 
-        document.getElementById('form-orcamento').onsubmit = async (e) => {
+        window.checkRegistroDireto = (tipo) => {
+            const campoData = document.getElementById('apt-' + tipo + '-direto').value;
+            const campoReg = document.getElementById('apt-reg-' + tipo + '-direto');
+            if(campoData && !campoReg.value) {
+                campoReg.value = new Date().toLocaleString('pt-BR');
+            }
+        };
+
+        document.getElementById('form-apontamento-direto').onsubmit = async (e) => {
             e.preventDefault();
-            const id = document.getElementById('orc-id').value;
-            const now = new Date();
+            const orcId = document.getElementById('apt-orc-id-direto').value;
+            const leadId = document.getElementById('orc-lead-direto').value;
+            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
             
-            const data = {
-                atendente: document.getElementById('orc-atendente').value,
-                lead_id: document.getElementById('orc-lead').value,
-                hist_num: document.getElementById('orc-hist-num').value,
-                data_prazo: document.getElementById('orc-prazo').value,
-                observacoes: document.getElementById('orc-obs').value,
-                updated_at: serverTimestamp()
+            const statusVal = document.getElementById('apt-status-direto').value;
+            const inicioVal = document.getElementById('apt-inicio-direto').value;
+            const prazoVal = document.getElementById('apt-prazo-direto').value;
+            const atendenteVal = document.getElementById('apt-atendente-direto').value;
+
+            const statusPermitidos = ['Programado', 'Solicitado Alteração', 'Apresentação'];
+            if (!statusPermitidos.includes(statusVal)) {
+                let aberto = false;
+                listaOrcamentos.forEach(orc => {
+                    if (orc.historico_trabalhos) {
+                        orc.historico_trabalhos.forEach((h, idx) => {
+                            if (orcId === orc.id && indexEditing === idx) return;
+                            if (h.atendente === atendenteVal && h.inicio && !h.fim) {
+                                aberto = true;
+                            }
+                        });
+                    }
+                });
+                if (aberto) {
+                    alert(`O atendente ${atendenteVal} já possui um apontamento iniciado e não finalizado. Favor concluir o trabalho anterior antes de iniciar um novo.`);
+                    return;
+                }
+            }
+
+            if ((statusVal === 'Programado' || statusVal === 'Solicitado Alteração') && !prazoVal) {
+                alert("O campo 'Prazo Final' é obrigatório para o status selecionado.");
+                return;
+            }
+
+            if (!inicioVal && statusVal !== 'Programado' && statusVal !== 'Solicitado Alteração') {
+                alert("O campo 'Dia/Hora Início' é obrigatório para o status selecionado.");
+                return;
+            }
+
+            const item = {
+                atendente: atendenteVal,
+                hist_num: document.getElementById('apt-hist-ref-direto').value,
+                id_externo: document.getElementById('apt-id-externo-direto').value,
+                inicio: inicioVal,
+                reg_inicio: document.getElementById('apt-reg-inicio-direto').value || (inicioVal ? new Date().toLocaleString('pt-BR') : ""),
+                fim: document.getElementById('apt-fim-direto').value,
+                reg_fim: document.getElementById('apt-reg-fim-direto').value || (document.getElementById('apt-fim-direto').value ? new Date().toLocaleString('pt-BR') : ""),
+                prazo: prazoVal,
+                status: statusVal,
+                obs: document.getElementById('apt-obs-direto').value,
+                timestamp: new Date().toISOString()
             };
 
-            if(!id) {
-                const offset = now.getTimezoneOffset() * 60000; 
-                const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
-                data.data_solicitado = localISOTime;
-                data.status = "Programado"; 
-                data.historico_trabalhos = []; 
-                await addDoc(collection(db, "apontamentos"), data);
-                alert("Orçamento criado com sucesso!");
+            let historico = [];
+            if (orcId) {
+                const orcExistente = listaOrcamentos.find(o => o.id === orcId);
+                historico = [...(orcExistente.historico_trabalhos || [])];
+                if (indexEditing >= 0) historico[indexEditing] = item;
+                else historico.push(item);
+
+                await updateDoc(doc(db, "apontamentos", orcId), {
+                    historico_trabalhos: historico,
+                    status: item.status,
+                    atendente: item.atendente,
+                    id_externo: item.id_externo,
+                    data_prazo: item.prazo,
+                    updated_at: serverTimestamp()
+                });
             } else {
-                await updateDoc(doc(db, "apontamentos", id), data);
-                alert("Orçamento atualizado!");
+                historico.push(item);
+                await addDoc(collection(db, "apontamentos"), {
+                    lead_id: leadId,
+                    atendente: item.atendente,
+                    id_externo: item.id_externo,
+                    status: item.status,
+                    data_prazo: item.prazo,
+                    historico_trabalhos: historico,
+                    updated_at: serverTimestamp()
+                });
             }
-            limparFormOrcamento();
+
+            alert("Apontamento gravado com sucesso!");
+            limparFormApontamentoDireto();
         };
 
         window.renderTableOrcamentos = () => {
             const tb = document.querySelector('#table-orcamentos tbody');
             const fAtend = document.getElementById('f-orc-atend').value;
+            const fLead = document.getElementById('f-orc-lead').value;
             const fStatus = document.getElementById('f-orc-status').value;
+            const fNoStart = document.getElementById('f-orc-no-start').checked;
+            const fNoEnd = document.getElementById('f-orc-no-end').checked;
+
             tb.innerHTML = '';
-            
             listaOrcamentos.forEach(orc => {
-                if(fAtend !== 'todos' && orc.atendente !== fAtend) return;
-                if(fStatus !== 'todos' && orc.status !== fStatus) return;
-                
                 const lead = listaLeads.find(l => l.id === orc.lead_id);
-                const statusCor = orc.status === 'Programado' ? '#6c757d' : (orc.status === 'Concluído' ? '#28a745' : '#17a2b8');
+                if(fLead !== 'todos' && orc.lead_id !== fLead) return;
+
+                let histHtml = "";
+                let refLeadHtml = "";
+                let actionsColumnHtml = "";
                 
-                tb.innerHTML += `
-                    <tr onclick="editarOrcamento('${orc.id}')">
-                        <td>${lead ? lead.numero_lead : 'N/A'} - ${lead ? lead.nome_cliente_cache : ''}</td>
-                        <td>${orc.atendente}</td>
-                        <td><span class="stage-tag" style="background:${statusCor}">${orc.status}</span></td>
-                        <td>${formatBR(orc.data_prazo)}</td>
-                        <td style="text-align:center;">
-                            <div class="btn-group-row">
-                                <button class="btn-icon" onclick="event.stopPropagation(); abrirApontamento('${orc.id}')" title="Apontar Horas/Status">🕒</button>
-                                <button class="btn-icon" onclick="event.stopPropagation(); abrirLeadDoOrcamento('${orc.id}')" title="Ir para o Lead">🎯</button>
-                                <span style="margin:0 2px; color:#ddd">|</span>
-                                <button class="btn-icon" onclick="event.stopPropagation(); editarOrcamento('${orc.id}')" title="Editar Orçamento">✏️</button>
-                                <button class="btn-icon" onclick="event.stopPropagation(); excluirOrcamento('${orc.id}')" style="color:red" title="Excluir Orçamento">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>`;
+                if(orc.historico_trabalhos) {
+                    const reversedHist = [...orc.historico_trabalhos].reverse();
+                    
+                    reversedHist.forEach((h, idxInReversed) => {
+                        const originalIdx = orc.historico_trabalhos.length - 1 - idxInReversed;
+                        
+                        if(fAtend !== 'todos' && h.atendente !== fAtend) return;
+                        if(fStatus !== 'todos' && h.status !== fStatus) return;
+                        if(fNoStart && h.inicio) return;
+                        if(fNoEnd && h.fim) return;
+
+                        refLeadHtml += `<div style="padding:10px; border-bottom:1px solid #eee; height:45px; display:flex; align-items:center;">Histórico #${h.hist_num}</div>`;
+                        
+                        histHtml += `
+                            <div class="hist-mini-card" onclick="editarItemDoHistoricoList('${orc.id}', ${originalIdx})" style="margin-top:2px; height:45px; margin-right: 0;">
+                                <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                                    <strong>${h.atendente}</strong> <span class="stage-tag">${h.status}</span> | 
+                                    <small>Início: ${formatBR(h.inicio)} | Fim: ${formatBR(h.fim)}</small>
+                                    ${h.prazo ? ' | <small style="color:red">🏁 ' + formatBR(h.prazo) + '</small>' : ''}
+                                </div>
+                            </div>`;
+
+                        actionsColumnHtml += `
+                            <div style="height:45px; display:flex; align-items:center; justify-content:center; gap:5px; margin-top:2px; border-bottom:1px solid #eee; padding: 0 10px;">
+                                <button class="btn-icon" title="Duplicar" onclick="event.stopPropagation(); duplicarItemHist('${orc.id}', ${originalIdx})">➕</button>
+                                <button class="btn-icon" title="Editar este registro" onclick="event.stopPropagation(); editarItemDoHistoricoList('${orc.id}', ${originalIdx})">⏱️</button>
+                                <button class="btn-icon" style="color:red" title="Excluir este registro" onclick="event.stopPropagation(); excluirItemHist('${orc.id}', ${originalIdx})">🗑️</button>
+                            </div>`;
+                    });
+                }
+
+                if (histHtml !== "") {
+                    tb.innerHTML += `
+                        <tr>
+                            <td onclick="carregarOrcamentoRaiz('${orc.id}')" style="vertical-align: middle;">
+                                <b>${lead ? lead.numero_lead : 'N/A'} - ${lead ? lead.nome_cliente_cache : ''}</b><br>
+                                <small style="color:var(--primary)">${orc.id_externo || 'Sem ID'}</small>
+                            </td>
+                            <td style="vertical-align:top; padding:0;">${refLeadHtml}</td>
+                            <td style="vertical-align:top; padding:0;">${histHtml}</td>
+                            <td style="vertical-align:top; padding:0; text-align:center;">${actionsColumnHtml}</td>
+                        </tr>`;
+                }
             });
         };
 
-        window.abrirLeadDoOrcamento = (orcId) => {
-            const orc = listaOrcamentos.find(x => x.id === orcId);
-            if(orc && orc.lead_id) {
-                editarLead(orc.lead_id);
+        window.excluirItemHist = async (orcId, idx) => {
+            if(!confirm("Deseja excluir este registro de histórico específico?")) return;
+            const orc = listaOrcamentos.find(o => o.id === orcId);
+            let novoHist = [...orc.historico_trabalhos];
+            novoHist.splice(idx, 1);
+            
+            if(novoHist.length === 0) {
+                await deleteDoc(doc(db, "apontamentos", orcId));
             } else {
-                alert("Orçamento sem lead vinculado.");
+                await updateDoc(doc(db, "apontamentos", orcId), {
+                    historico_trabalhos: novoHist,
+                    updated_at: serverTimestamp()
+                });
             }
         };
 
-        window.editarOrcamento = (id) => {
+        window.duplicarItemHist = (orcId, idx) => {
+            const orc = listaOrcamentos.find(o => o.id === orcId);
+            const h = orc.historico_trabalhos[idx];
+            
+            document.getElementById('orc-lead-direto').value = orc.lead_id;
+            populateHistSelectDireto(orc.lead_id);
+            
+            document.getElementById('apt-orc-id-direto').value = orc.id;
+            document.getElementById('apt-index-editing-direto').value = "-1";
+            document.getElementById('apt-atendente-direto').value = h.atendente;
+            document.getElementById('apt-hist-ref-direto').value = h.hist_num;
+            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
+            document.getElementById('apt-inicio-direto').value = "";
+            document.getElementById('apt-reg-inicio-direto').value = "";
+            document.getElementById('apt-fim-direto').value = "";
+            document.getElementById('apt-reg-fim-direto').value = "";
+            document.getElementById('apt-prazo-direto').value = h.prazo || "";
+            document.getElementById('apt-status-direto').value = h.status;
+            document.getElementById('apt-obs-direto').value = h.obs || "";
+            togglePrazoRequirement(h.status);
+            
+            document.getElementById('form-apontamento-direto').scrollIntoView();
+        };
+
+        window.carregarOrcamentoRaiz = (id) => {
+             const orc = listaOrcamentos.find(x => x.id === id);
+             document.getElementById('orc-lead-direto').value = orc.lead_id;
+             populateHistSelectDireto(orc.lead_id);
+             document.getElementById('apt-orc-id-direto').value = orc.id;
+             document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
+        };
+
+        window.editarItemDoHistoricoList = (orcId, idx) => {
+            const orc = listaOrcamentos.find(o => o.id === orcId);
+            const h = orc.historico_trabalhos[idx];
+            
+            document.getElementById('orc-lead-direto').value = orc.lead_id;
+            populateHistSelectDireto(orc.lead_id);
+            
+            document.getElementById('apt-orc-id-direto').value = orc.id;
+            document.getElementById('apt-index-editing-direto').value = idx;
+            document.getElementById('apt-atendente-direto').value = h.atendente;
+            document.getElementById('apt-hist-ref-direto').value = h.hist_num;
+            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
+            document.getElementById('apt-inicio-direto').value = h.inicio || "";
+            document.getElementById('apt-reg-inicio-direto').value = h.reg_inicio || "";
+            document.getElementById('apt-fim-direto').value = h.fim || "";
+            document.getElementById('apt-reg-fim-direto').value = h.reg_fim || "";
+            document.getElementById('apt-prazo-direto').value = h.prazo || "";
+            document.getElementById('apt-status-direto').value = h.status;
+            document.getElementById('apt-obs-direto').value = h.obs || "";
+            togglePrazoRequirement(h.status);
+            
+            document.getElementById('form-apontamento-direto').scrollIntoView();
+        };
+
+        window.limparFormApontamentoDireto = () => {
+            document.getElementById('form-apontamento-direto').reset();
+            document.getElementById('apt-orc-id-direto').value = "";
+            document.getElementById('apt-index-editing-direto').value = "-1";
+            togglePrazoRequirement('Programado');
+        };
+
+        window.abrirApontamento = (id, histNum = null) => {
             const orc = listaOrcamentos.find(x => x.id === id);
-            document.getElementById('orc-id').value = orc.id;
-            document.getElementById('orc-lead').value = orc.lead_id;
-            populateHistSelect(orc.lead_id);
-            document.getElementById('orc-hist-num').value = orc.hist_num;
-            document.getElementById('orc-atendente').value = orc.atendente;
-            document.getElementById('orc-solicitado').value = orc.data_solicitado || '';
-            document.getElementById('orc-prazo').value = orc.data_prazo || '';
-            document.getElementById('orc-status-display').value = orc.status;
-            document.getElementById('orc-obs').value = orc.observacoes || '';
-        };
-
-        window.limparFormOrcamento = () => {
-            document.getElementById('form-orcamento').reset();
-            document.getElementById('orc-id').value = '';
-            document.getElementById('orc-status-display').value = "Programado (Novo)";
-        };
-
-        window.excluirOrcamento = async (id) => {
-            if(confirm("Excluir este Orçamento e todo seu histórico?")) await deleteDoc(doc(db, "apontamentos", id));
-        };
-
-        // --- LÓGICA DO MODAL DE APONTAMENTOS (FILHO) ---
-
-        window.abrirApontamento = (id) => {
-            orcamentoAtual = listaOrcamentos.find(x => x.id === id);
-            if(!orcamentoAtual) return;
-
-            const lead = listaLeads.find(l => l.id === orcamentoAtual.lead_id);
+            if(!orc) return;
+            const lead = listaLeads.find(l => l.id === orc.lead_id);
             document.getElementById('modal-info-lead').innerText = `Lead: ${lead ? lead.numero_lead : '?'} | Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
-            document.getElementById('apt-orc-id').value = id;
-            
-            limparFormApontamentoItem();
-            const historico = orcamentoAtual.historico_trabalhos || [];
-            const ultimoApont = historico.length > 0 ? historico[historico.length - 1] : null;
-
-            // Verificar se o último apontamento está "aberto" (Tem Início mas não tem Fim)
-            let abrirEmModoEdicao = false;
-            
-            if (ultimoApont) {
-                const temInicio = ultimoApont.inicio && ultimoApont.inicio !== "";
-                const temFim = ultimoApont.fim && ultimoApont.fim !== "";
-                
-                if (temInicio && !temFim) {
-                    abrirEmModoEdicao = true;
-                }
-            }
-
-            if (abrirEmModoEdicao) {
-                // Modo: Fechar o apontamento anterior
-                const idx = historico.length - 1;
-                document.getElementById('apt-index-editing').value = idx;
-                
-                document.getElementById('apt-atendente').value = ultimoApont.atendente;
-                document.getElementById('apt-inicio').value = ultimoApont.inicio;
-                document.getElementById('apt-reg-inicio').value = ultimoApont.reg_inicio || "";
-                document.getElementById('apt-reg-inicio').setAttribute('data-real-value', ultimoApont.reg_inicio || ""); // Preserva original
-                
-                document.getElementById('apt-fim').value = ""; // Usuário deve preencher
-                document.getElementById('apt-reg-fim').value = "";
-                
-                document.getElementById('apt-status').value = ultimoApont.status;
-                document.getElementById('apt-obs').value = ultimoApont.obs || "";
-
-                alert("O apontamento anterior está em aberto. Por favor, encerre-o preenchendo a Data/Hora Fim.");
-            } else {
-                // Modo: Novo Apontamento
-                document.getElementById('apt-index-editing').value = "-1";
-                
-                // Sugere atendente
-                let defaultAtendente = orcamentoAtual.atendente;
-                if(ultimoApont) defaultAtendente = ultimoApont.atendente;
-                document.getElementById('apt-atendente').value = defaultAtendente;
-            }
-
-            renderHistoricoApontamentosNoModal();
-            document.getElementById('dialog-apontamento').showModal();
-        };
-
-        window.checkRegistro = (tipo) => {
-            const campoData = document.getElementById('apt-' + tipo).value;
-            const campoReg = document.getElementById('apt-reg-' + tipo);
-            
-            // Só atualiza visualmente se não estiver editando um registro que já tinha valor salvo
-            const existingVal = campoReg.getAttribute('data-real-value');
-            
-            if(campoData && !existingVal) {
-                if(!campoReg.value) {
-                    const now = new Date();
-                    campoReg.value = now.toLocaleString('pt-BR') + " (Será salvo)";
-                }
-            }
-        };
-
-        document.getElementById('form-apontamento-item').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            // Validações
-            const inicioVal = document.getElementById('apt-inicio').value;
-            if (!inicioVal) {
-                alert("O campo Dia/Hora Início é obrigatório.");
-                return;
-            }
-
-            const statusVal = document.getElementById('apt-status').value;
-            if (statusVal === 'Programado') {
-                alert("Não é permitido salvar com o status 'Programado'. Selecione Iniciado, Concluído, etc.");
-                return;
-            }
-
-            const orcId = document.getElementById('apt-orc-id').value;
-            const indexEditing = parseInt(document.getElementById('apt-index-editing').value);
-            const now = new Date().toLocaleString('pt-BR');
-
-            // Preparar objeto do item
-            const item = {
-                atendente: document.getElementById('apt-atendente').value,
-                inicio: document.getElementById('apt-inicio').value,
-                // Se já tinha reg_inicio salvo (edição), mantém. Se não, usa o hidden data ou data atual
-                reg_inicio: document.getElementById('apt-reg-inicio').getAttribute('data-real-value') || now, 
-                fim: document.getElementById('apt-fim').value,
-                reg_fim: document.getElementById('apt-reg-fim').getAttribute('data-real-value') || (document.getElementById('apt-fim').value ? now : ""),
-                status: statusVal,
-                obs: document.getElementById('apt-obs').value,
-                timestamp: new Date().toISOString() // Metadata
-            };
-
-            // Atualiza array do Orçamento
-            let historico = orcamentoAtual.historico_trabalhos || [];
-
-            if (indexEditing >= 0) {
-                // Atualizando item existente (fechando o aberto)
-                // Preserva o reg_inicio original se existir no objeto antigo, caso a lógica acima falhe
-                if(historico[indexEditing].reg_inicio) item.reg_inicio = historico[indexEditing].reg_inicio;
-                historico[indexEditing] = item;
-            } else {
-                // Adicionando novo
-                historico.push(item);
-            }
-
-            await updateDoc(doc(db, "apontamentos", orcId), {
-                historico_trabalhos: historico,
-                status: item.status, 
-                updated_at: serverTimestamp()
-            });
-
-            limparFormApontamentoItem();
-            // Mantém modal aberto e recarrega lista (via snapshot listener que chamará render)
-            // Mas fechamos o modal se for edição para evitar confusão ou resetamos para novo?
-            // Melhor resetar para novo.
-            document.getElementById('apt-index-editing').value = "-1";
-            alert("Apontamento registrado!");
-        };
-
-        window.limparFormApontamentoItem = () => {
-            document.getElementById('form-apontamento-item').reset();
-            document.getElementById('apt-reg-inicio').value = "";
-            document.getElementById('apt-reg-inicio').removeAttribute('data-real-value');
-            document.getElementById('apt-reg-fim').value = "";
-            document.getElementById('apt-reg-fim').removeAttribute('data-real-value');
-            document.getElementById('apt-index-editing').value = "-1";
-        };
-
-        window.renderHistoricoApontamentosNoModal = () => {
             const div = document.getElementById('lista-historico-apontamentos');
             div.innerHTML = '';
             
-            if(!orcamentoAtual.historico_trabalhos || orcamentoAtual.historico_trabalhos.length === 0) {
-                div.innerHTML = '<p style="color:#888; text-align:center;">Nenhum apontamento ainda.</p>';
-                return;
-            }
-
-            const listaInvertida = [...orcamentoAtual.historico_trabalhos].reverse();
-
-            listaInvertida.forEach((h, idx) => {
-                const seq = orcamentoAtual.historico_trabalhos.length - idx;
+            const histRefStr = histNum ? histNum.toString() : null;
+            const lista = [...(orc.historico_trabalhos || [])].reverse();
+            
+            lista.forEach(h => {
+                if(histRefStr && h.hist_num !== histRefStr) return;
+                
                 div.innerHTML += `
                     <div class="hist-list-item">
-                        <strong>#${seq} - ${h.atendente}</strong> <span class="stage-tag">${h.status}</span><br>
-                        Início: ${formatBR(h.inicio)} <small style="color:#666">(Reg: ${h.reg_inicio || '-'})</small><br>
-                        Fim: ${formatBR(h.fim)} <small style="color:#666">(Reg: ${h.reg_fim || '-'})</small><br>
+                        <strong>${h.atendente}</strong> <span class="stage-tag">${h.status}</span><br>
+                        Início: ${formatBR(h.inicio)} <small>(Reg: ${h.reg_inicio})</small><br>
+                        Fim: ${formatBR(h.fim)} <small>(Reg: ${h.reg_fim})</small><br>
+                        ${h.prazo ? '🏁 <b>Prazo Final: ' + formatBR(h.prazo) + '</b><br>' : ''}
                         <em>${h.obs || ''}</em>
-                    </div>
-                `;
+                    </div>`;
             });
+            document.getElementById('dialog-apontamento').showModal();
         };
-
-        // --- RESTANTE DAS FUNÇÕES ORIGINAIS (Mantidas) ---
 
         window.handleFileUpload = async (files) => {
             if(!leadAtual) return alert("Salve os dados básicos antes de enviar arquivos.");
@@ -958,7 +1017,7 @@
         window.updateHistContactDisplay = (id) => {
             const span = document.getElementById('info-hist-contato');
             const item = listaClientes.find(c => c.id === id);
-            span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Contato não vinculado nos dados básicos.";
+            span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Contato não vinculado.";
         };
 
         window.renderFunnel = () => {
@@ -980,24 +1039,74 @@
                     const desde = lead.created_at ? new Date(lead.created_at.toDate()).toLocaleString('pt-BR') : '-';
                     let cor = '';
                     if(h.data_programada && !h.data_realizada) { cor = new Date(h.data_programada) < new Date() ? 'card-red' : 'card-blue'; } else if(h.data_realizada) cor = 'card-green';
+                    
+                    let statusOrcamentoStr = "";
+                    if (h.etapa === 'orcamento') {
+                        const orc = listaOrcamentos.find(o => o.lead_id === lead.id);
+                        if (orc) statusOrcamentoStr = `<span class="status-badge-funnel">${orc.status}</span>`;
+                    }
+
                     const div = document.getElementById(cols[h.etapa]);
                     if(div) {
-                        div.innerHTML += `<div class="card ${cor}" onclick="editarLead('${lead.id}')"><span class="card-number">${lead.numero_lead||''}</span><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}</div></div>`;
+                        div.innerHTML += `<div class="card ${cor}" onclick="editarLead('${lead.id}')"><span class="card-number">${lead.numero_lead||''}</span><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}</div></div>`;
                     }
                 });
             });
             Object.keys(cols).forEach(key => { const count = document.getElementById(cols[key]).children.length; const badge = document.getElementById('c-' + key); if(badge) badge.innerText = count; });
         };
 
+        window.toggleLeadSort = () => {
+            leadSortAsc = !leadSortAsc;
+            renderTableLeads();
+        };
+
         window.renderTableLeads = () => {
-            const tb = document.querySelector('#table-leads tbody'); tb.innerHTML = '';
-            listaLeads.forEach(l => {
+            const tb = document.querySelector('#table-leads tbody'); 
+            tb.innerHTML = '';
+            
+            // Get Filter Values
+            const fCli = document.getElementById('f-leads-cliente') ? document.getElementById('f-leads-cliente').value.toLowerCase() : '';
+            const fEtapa = document.getElementById('f-leads-etapa') ? document.getElementById('f-leads-etapa').value : 'todos';
+
+            // Filter
+            let leadsFiltered = listaLeads.filter(l => {
+                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const matchCli = l.nome_cliente_cache.toLowerCase().includes(fCli);
+                const matchEtapa = fEtapa === 'todos' || etapa === fEtapa;
+                return matchCli && matchEtapa;
+            });
+
+            // Sort
+            leadsFiltered.sort((a, b) => {
+                if (leadSortAsc) {
+                    return a.nome_cliente_cache.localeCompare(b.nome_cliente_cache);
+                } else {
+                    return b.nome_cliente_cache.localeCompare(a.nome_cliente_cache);
+                }
+            });
+
+            leadsFiltered.forEach(l => {
                 const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
                 const desde = l.created_at ? new Date(l.created_at.toDate()).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
                 const cliente = listaClientes.find(c => c.id === l.cliente_id);
                 const tel = (cliente && cliente.telefone) ? cliente.telefone.replace(/\D/g, '') : '';
-                const btnWhats = tel ? `<a href="https://wa.me/55${tel}" target="_blank" style="text-decoration:none; margin-right:8px; font-size:1.1em;">🟢</a>` : '';
-                tb.innerHTML += `<tr onclick="editarLead('${l.id}')"><td>${l.numero_lead||''}</td><td>${desde}</td><td>${l.nome_cliente_cache}</td><td style="text-transform:capitalize">${etapa}</td><td>${btnWhats}<button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button></td></tr>`;
+                
+                const btnWhats = tel 
+                    ? `<a href="https://wa.me/55${tel}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; text-decoration:none; font-size:1.1em;">🟢</a>` 
+                    : `<span style="display:inline-block; width:30px; height:30px;"></span>`;
+                
+                tb.innerHTML += `<tr onclick="editarLead('${l.id}')">
+                    <td>${desde}</td>
+                    <td>${l.nome_cliente_cache}</td>
+                    <td style="text-transform:capitalize">${etapa}</td>
+                    <td>
+                        <div class="actions-cell">
+                            ${btnWhats}
+                            <button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button>
+                            <button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button>
+                        </div>
+                    </td>
+                </tr>`;
             });
         };
 
@@ -1010,11 +1119,7 @@
 
             listaLeads.forEach(l => {
                 const dtCriacao = l.created_at ? l.created_at.toDate() : null;
-                if(dtCriacao && dtCriacao >= ini && dtCriacao <= fim) {
-                    origemCount[l.origem] = (origemCount[l.origem]||0)+1;
-                    const keyDay = dtCriacao.toLocaleDateString('pt-BR');
-                    leadsDiaCount[keyDay] = (leadsDiaCount[keyDay]||0)+1;
-                }
+                if(dtCriacao && dtCriacao >= ini && dtCriacao <= fim) { origemCount[l.origem] = (origemCount[l.origem]||0)+1; const keyDay = dtCriacao.toLocaleDateString('pt-BR'); leadsDiaCount[keyDay] = (leadsDiaCount[keyDay]||0)+1; }
                 if(l.historico) {
                     let lastDate = dtCriacao;
                     l.historico.forEach((h, idx) => {
@@ -1055,66 +1160,31 @@
         function renderDashTable(data) { const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = ''; document.getElementById('dash-count').innerText = `(${data.length} registros)`; data.forEach(r => tb.innerHTML += `<tr onclick="editarLead('${r.id}')"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.num}</td><td>${r.cli}</td><td>${r.st}</td></tr>`); }
 
         document.getElementById('form-historico').onsubmit = async(e) => {
-            e.preventDefault();
-            const idx = document.getElementById('hist-index').value;
-            const h = { 
-                atendente: document.getElementById('hist-atendente').value,
-                contato_tipo: document.getElementById('hist-contato-tipo').value,
-                contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "",
-                etapa: document.getElementById('hist-etapa').value,
-                data_programada: document.getElementById('hist-prog').value,
-                data_realizada: document.getElementById('hist-real').value,
-                resultado: document.getElementById('hist-resultado').value,
-                resumo: document.getElementById('hist-resumo').value,
-                temperatura: document.getElementById('hist-temp').value,
-                data_operacao: new Date().toLocaleString('pt-BR')
-            };
-            if (h.etapa !== 'novo' && !h.temperatura) { alert("A classificação por estrelas é obrigatória para esta etapa."); return; }
-            if (h.data_realizada && !h.resultado) { alert("O campo 'Resultado da Interação' é obrigatório quando a data 'Realizado' é preenchida."); return; }
-            
+            e.preventDefault(); const idx = document.getElementById('hist-index').value;
+            const h = { atendente: document.getElementById('hist-atendente').value, contato_tipo: document.getElementById('hist-contato-tipo').value, contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "", etapa: document.getElementById('hist-etapa').value, data_programada: document.getElementById('hist-prog').value, data_realizada: document.getElementById('hist-real').value, resultado: document.getElementById('hist-resultado').value, resumo: document.getElementById('hist-resumo').value, temperatura: document.getElementById('hist-temp').value, data_operacao: new Date().toLocaleString('pt-BR') };
+            if (h.etapa !== 'novo' && !h.temperatura) { alert("A classificação por estrelas é obrigatória."); return; }
+            if (h.data_realizada && !h.resultado) { alert("O Resultado é obrigatório."); return; }
             let hist = [...(leadAtual.historico || [])];
             if(idx !== "") { h.updated_realizada_at = (hist[parseInt(idx)].data_realizada !== h.data_realizada) ? new Date().toLocaleString('pt-BR') : (hist[parseInt(idx)].updated_realizada_at || '-'); hist[parseInt(idx)] = h; } 
-            else {
-                h.updated_realizada_at = h.data_realizada ? new Date().toLocaleString('pt-BR') : '-'; hist.push(h);
-                if (h.data_realizada && h.resultado === "Insucesso") { hist.push({ ...h, data_realizada: "", resultado: "", data_operacao: new Date().toLocaleString('pt-BR'), updated_realizada_at: '-', resumo: "REAGENDAMENTO AUTOMÁTICO (Insucesso): " + h.resumo }); }
-            }
+            else { h.updated_realizada_at = h.data_realizada ? new Date().toLocaleString('pt-BR') : '-'; hist.push(h); if (h.data_realizada && h.resultado === "Insucesso") { hist.push({ ...h, data_realizada: "", resultado: "", data_operacao: new Date().toLocaleString('pt-BR'), updated_realizada_at: '-', resumo: "REAGENDAMENTO AUTOMÁTICO: " + h.resumo }); } }
             await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: h.etapa });
             leadAtual.historico = hist; renderTimeline(); limparFormHist();
         };
 
         window.editHist = (i) => {
-            const h = leadAtual.historico[i];
-            document.getElementById('hist-index').value = i;
-            document.getElementById('hist-atendente').value = h.atendente;
-            document.getElementById('hist-contato-tipo').value = h.contato_tipo || "";
-            handleHistContato(h.contato_tipo);
-            if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || "";
-            document.getElementById('hist-etapa').value = h.etapa;
-            document.getElementById('hist-temp').value = h.temperatura || "";
-            document.getElementById('hist-prog').value = h.data_programada || '';
-            document.getElementById('hist-real').value = h.data_realizada || '';
-            document.getElementById('hist-resultado').value = h.resultado || '';
-            document.getElementById('hist-resumo').value = h.resumo;
-            document.getElementById('hist-upd-real').value = h.updated_realizada_at || '-';
-            document.getElementById('btn-save-hist').innerText = "Atualizar Interação";
+            const h = leadAtual.historico[i]; document.getElementById('hist-index').value = i; document.getElementById('hist-atendente').value = h.atendente; document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo);
+            if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || ""; document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || ""; document.getElementById('hist-prog').value = h.data_programada || ''; document.getElementById('hist-real').value = h.data_realizada || ''; document.getElementById('hist-resultado').value = h.resultado || ''; document.getElementById('hist-resumo').value = h.resumo; document.getElementById('hist-upd-real').value = h.updated_realizada_at || '-'; document.getElementById('btn-save-hist').innerText = "Atualizar Interação";
         };
 
-        window.novoHistBaseado = (i) => {
-            const h = leadAtual.historico[i]; limparFormHist();
-            document.getElementById('hist-atendente').value = h.atendente;
-            document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo);
-            document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || "";
-            document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('form-historico').scrollIntoView();
-        };
-
+        window.novoHistBaseado = (i) => { const h = leadAtual.historico[i]; limparFormHist(); document.getElementById('hist-atendente').value = h.atendente; document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo); document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || ""; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('form-historico').scrollIntoView(); };
         window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
         window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
         window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
         window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
         window.excluirLead = async(id) => { if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
         window.novoLeadDireto = () => { window.switchView('leads'); window.limparFormLead(); };
-        window.excluirCli = async(id) => { if(listaLeads.some(l => l.cliente_id === id)) return alert("Erro: Este registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
-        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === name))) return alert("Erro: Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
+        window.excluirCli = async(id) => { if(listaLeads.some(l => l.cliente_id === id)) return alert("Registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
+        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === name))) return alert("Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
         
         document.getElementById('form-cliente').onsubmit = async(e) => { 
             e.preventDefault(); const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, cidade:document.getElementById('cli-cidade').value, endereco:document.getElementById('cli-endereco').value }; 
@@ -1125,7 +1195,7 @@
         
         document.getElementById('form-lead-main').onsubmit = async(e) => { 
             e.preventDefault(); const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
-            if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) { alert("O campo Indicação é obrigatório para esta origem."); return; }
+            if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) { alert("O campo Indicação é obrigatório."); return; }
             const d={ cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, origem:origem, indicacao_id: indicacao, pvc_metragem: document.getElementById('lead-pvc-metragem').value, pvc_pecas: document.getElementById('lead-pvc-pecas').value, pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, previsao:document.getElementById('lead-previsao').value, construtora_id: document.getElementById('lead-construtora').value, adm_obra_id: document.getElementById('lead-adm-obra').value, arquiteto_id: document.getElementById('lead-arquiteto').value, responsavel_id: document.getElementById('lead-responsavel').value, updated_at:serverTimestamp() }; 
             if(id) await updateDoc(doc(db,"leads",id),d); else { d.created_at=serverTimestamp(); d.numero_lead="#L-"+Math.floor(1000+Math.random()*9000); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
             alert('Dados Salvos!'); 
@@ -1151,24 +1221,32 @@
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? contactData.telefone.replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
                 
+                let orcIntegrationHtml = '';
+                if(h.etapa === 'orcamento') {
+                    const orc = listaOrcamentos.find(o => o.lead_id === leadAtual.id);
+                    if(orc) {
+                        const histRefStr = (h.idx + 1).toString();
+                        const linkedApts = (orc.historico_trabalhos || []).filter(apt => apt.hist_num === histRefStr);
+                        if(linkedApts.length > 0) {
+                            const lastApt = linkedApts[linkedApts.length - 1]; 
+                             orcIntegrationHtml = `<div class="orc-integration-box" onclick="abrirApontamento('${orc.id}', ${h.idx + 1})"><b>⏱️ Apontamento:</b> ${lastApt.status} | 👤 ${lastApt.atendente}<br>📅 Início: ${formatBR(lastApt.inicio)} | Fim: ${formatBR(lastApt.fim)}</div>`;
+                        }
+                    }
+                }
+
                 div.innerHTML += `<div class="timeline-item">
                     <div class="seq-badge">${h.idx + 1}</div>
-                    <div class="tl-header">
-                        <span class="stage-tag">${h.etapa}</span>
-                        <div><button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>${btnNovo}<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button></div>
-                    </div>
+                    <div class="tl-header"><span class="stage-tag">${h.etapa}</span><div><button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>${btnNovo}<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button></div></div>
                     <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br>
-                    <span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 📅 Operação: ${h.data_operacao || '-'} | 🏁 Status: ${h.resultado || '-'}</span>
-                    <div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;">
-                        <b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br>
-                        <i>${h.resumo}</i>
-                    </div>
+                    <span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 🏁 Status: ${h.resultado || '-'}</span>
+                    <div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div>
+                    ${orcIntegrationHtml}
                 </div>`; 
             }); 
         };
 
         window.delHist = async (i) => { if(!confirm("Excluir esta interação?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); leadAtual.historico = hist; renderTimeline(); };
-        window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); };
+        window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); togglePrazoRequirement('Programado'); };
     </script>
 </body>
 </html>
