@@ -431,21 +431,44 @@
             <div class="list-area">
                 <h2>Leads</h2>
                 
-                <div class="filter-panel" style="margin-bottom:15px; padding:10px; background:#f8f9fa; border:1px solid #eee; border-radius:6px;">
-                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                        <div style="flex:1; min-width: 200px;">
-                            <label>Filtrar Cliente:</label>
+                <div class="filter-panel">
+                    <div class="filter-row" style="flex-wrap: nowrap; gap: 8px;">
+                        <div class="filter-item" style="flex: 1.5;">
+                            <label>Cliente:</label>
                             <input type="text" id="f-leads-cliente" oninput="renderTableLeads()" placeholder="Nome do cliente..." style="margin-bottom:0;">
                         </div>
-                        <div style="width:200px; min-width:150px;">
-                            <label>Filtrar Etapa:</label>
+                        <div class="filter-item">
+                            <label>Atendente:</label>
+                            <select id="f-leads-atend" onchange="renderTableLeads()" style="margin-bottom:0;">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Origem:</label>
+                            <select id="f-leads-origem" onchange="renderTableLeads()" style="margin-bottom:0;">
+                                <option value="todos">Todas</option>
+                                <option>Cliente</option>
+                                <option>Facebook</option>
+                                <option>Google</option>
+                                <option>Indicação</option>
+                                <option>Instagram</option>
+                                <option>Manutenção</option>
+                                <option>Outros</option>
+                                <option>Prospecção</option>
+                                <option>Reativação</option>
+                                <option>Site</option>
+                                <option>Tiktok</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Etapa:</label>
                             <select id="f-leads-etapa" onchange="renderTableLeads()" style="margin-bottom:0;">
                                 <option value="todos">Todas</option>
-                                <option value="novo">Novo</option>
                                 <option value="contatado">Contato</option>
-                                <option value="orcamento">Orçamento</option>
-                                <option value="negociacao">Negociação</option>
                                 <option value="fechado">Fechado</option>
+                                <option value="negociacao">Negociação</option>
+                                <option value="novo">Novo</option>
+                                <option value="orcamento">Orçamento</option>
                                 <option value="perdido">Perdido</option>
                             </select>
                         </div>
@@ -567,7 +590,6 @@
         let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         
-        // Estado de ordenação da tabela de leads
         let leadSortAsc = false;
 
         function formatBR(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
@@ -633,7 +655,7 @@
         onSnapshot(collection(db, "atendentes"), (snap) => {
             listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
             const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
-            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend'];
+            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend', 'f-leads-atend'];
             selects.forEach(id => { const el = document.getElementById(id); if(el) { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
             listaAtendentes.forEach(a => {
                 tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
@@ -1066,26 +1088,22 @@
             const tb = document.querySelector('#table-leads tbody'); 
             tb.innerHTML = '';
             
-            // Get Filter Values
-            const fCli = document.getElementById('f-leads-cliente') ? document.getElementById('f-leads-cliente').value.toLowerCase() : '';
-            const fEtapa = document.getElementById('f-leads-etapa') ? document.getElementById('f-leads-etapa').value : 'todos';
+            const fCli = document.getElementById('f-leads-cliente').value.toLowerCase();
+            const fAtend = document.getElementById('f-leads-atend').value;
+            const fOrigem = document.getElementById('f-leads-origem').value;
+            const fEtapa = document.getElementById('f-leads-etapa').value;
 
-            // Filter
             let leadsFiltered = listaLeads.filter(l => {
-                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const hist = l.historico || [];
+                const lastH = hist.length ? hist[hist.length-1] : { etapa: l.etapa || 'novo', atendente: '' };
                 const matchCli = l.nome_cliente_cache.toLowerCase().includes(fCli);
-                const matchEtapa = fEtapa === 'todos' || etapa === fEtapa;
-                return matchCli && matchEtapa;
+                const matchAtend = fAtend === 'todos' || lastH.atendente === fAtend;
+                const matchOrigem = fOrigem === 'todos' || l.origem === fOrigem;
+                const matchEtapa = fEtapa === 'todos' || lastH.etapa === fEtapa;
+                return matchCli && matchAtend && matchOrigem && matchEtapa;
             });
 
-            // Sort
-            leadsFiltered.sort((a, b) => {
-                if (leadSortAsc) {
-                    return a.nome_cliente_cache.localeCompare(b.nome_cliente_cache);
-                } else {
-                    return b.nome_cliente_cache.localeCompare(a.nome_cliente_cache);
-                }
-            });
+            leadsFiltered.sort((a, b) => leadSortAsc ? a.nome_cliente_cache.localeCompare(b.nome_cliente_cache) : b.nome_cliente_cache.localeCompare(a.nome_cliente_cache));
 
             leadsFiltered.forEach(l => {
                 const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
