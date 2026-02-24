@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+v<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V15.0 (Full Star)</title>
+    <title>Perfecta CRM - V15.1 (Full Star + Paste)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -129,7 +129,7 @@
 <body>
 
     <nav>
-        <div class="brand">Perfecta CRM v15.0</div>
+        <div class="brand">Perfecta CRM v15.1</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
             <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
@@ -305,9 +305,9 @@
 
     <section id="view-leads" class="view-section">
         <div class="management-container">
-            <div class="form-area">
+            <div class="form-area" id="lead-main-container">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h2>Dados Básicos</h2>
+                    <h2>Dados Básicos <small style="font-size: 0.5em; color: var(--info);">(Cole imagens aqui)</small></h2>
                     <button onclick="limparFormLead()" style="padding:5px 10px; cursor:pointer;">Limpar / Novo</button>
                 </div>
                 <form id="form-lead-main">
@@ -700,6 +700,21 @@
             renderFunnel(); 
         });
 
+        // --- NOVO: EVENTO DE COLAR IMAGEM ---
+        window.addEventListener('paste', async (e) => {
+            if (!leadAtual || document.getElementById('view-leads').style.display === 'none') return;
+            
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    const blob = items[i].getAsFile();
+                    const file = new File([blob], `print_${new Date().getTime()}.png`, { type: blob.type });
+                    console.log("Imagem detectada no colar, iniciando upload...");
+                    handleFileUpload([file]);
+                }
+            }
+        });
+
         window.togglePrazoRequirement = (status) => {
             const inputPrazo = document.getElementById('apt-prazo-direto');
             const lblPrazo = document.getElementById('lbl-prazo-direto');
@@ -1006,7 +1021,7 @@
                 const arquivos = leadAtual.arquivos || [];
                 arquivos.push({ name: file.name, url: url, path: path });
                 await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos });
-                alert("Arquivo enviado!");
+                console.log("Arquivo carregado com sucesso!");
             } catch (err) { console.error(err); alert("Erro ao enviar arquivo."); }
             document.getElementById('lead-file-input').value = "";
         };
