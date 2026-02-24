@@ -1,4 +1,4 @@
-v<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -54,7 +54,7 @@ v<!DOCTYPE html>
         .card-red { background-color: #ffebee !important; border-left-color: #f44336 !important; }
         .card-yellow { background-color: #fffde7 !important; border-left-color: #fbc02d !important; }
         .card-green { background-color: #e8f5e9 !important; border-left-color: #4caf50 !important; }
-        .card-number { position: absolute; top: 8px; right: 8px; font-size: 0.65em; color: #888; font-weight: bold; }
+        .card-number { display: none; }
         .card-stars { font-size: 0.8em; margin-bottom: 2px; display: block; color: #ffc107; }
         .card-title { font-weight: bold; display: block; margin-bottom: 4px; margin-right: 30px; font-size: 0.92em; }
         .card-dates { font-size: 0.7em; color: #555; background: rgba(255,255,255,0.6); padding: 4px; border-radius: 4px; line-height: 1.3; }
@@ -246,19 +246,17 @@ v<!DOCTYPE html>
                     <div class="filter-row">
                         <div class="filter-item">
                             <label>Lead / Cliente</label>
-                            <select id="f-orc-lead" onchange="renderTableOrcamentos()">
-                                <option value="todos">Todos os Leads</option>
-                            </select>
+                            <input type="text" id="f-orc-lead" oninput="renderTableOrcamentos()" placeholder="Nome do cliente..." style="margin-bottom:0;">
                         </div>
                         <div class="filter-item">
                             <label>Atendente</label>
-                            <select id="f-orc-atend" onchange="renderTableOrcamentos()">
+                            <select id="f-orc-atend" onchange="renderTableOrcamentos()" style="margin-bottom:0;">
                                 <option value="todos">Todos</option>
                             </select>
                         </div>
                         <div class="filter-item">
                             <label>Status</label>
-                            <select id="f-orc-status" onchange="renderTableOrcamentos()">
+                            <select id="f-orc-status" onchange="renderTableOrcamentos()" style="margin-bottom:0;">
                                 <option value="todos">Todos os Status</option>
                                 <option value="Programado">Programado</option>
                                 <option value="Iniciado">Iniciado</option>
@@ -307,7 +305,7 @@ v<!DOCTYPE html>
         <div class="management-container">
             <div class="form-area" id="lead-main-container">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h2>Dados Básicos <small style="font-size: 0.5em; color: var(--info);">(Cole imagens aqui)</small></h2>
+                    <h2>Dados Básicos</h2>
                     <button onclick="limparFormLead()" style="padding:5px 10px; cursor:pointer;">Limpar / Novo</button>
                 </div>
                 <form id="form-lead-main">
@@ -512,7 +510,46 @@ v<!DOCTYPE html>
                     <button type="submit" class="btn-save">Salvar</button>
                 </form>
             </div>
-            <div class="list-area"><h2>Cadastro Geral</h2><div class="table-wrapper"><table id="table-clientes"><thead><tr><th>Nome</th><th>Tipo</th><th>Cidade</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="list-area">
+                <h2>Cadastro Geral</h2>
+                
+                <div class="filter-panel">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label>Nome:</label>
+                            <input type="text" id="f-cli-nome" oninput="renderTableClientes()" placeholder="Filtrar nome..." style="margin-bottom:0;">
+                        </div>
+                        <div class="filter-item">
+                            <label>Tipo:</label>
+                            <select id="f-cli-tipo" onchange="renderTableClientes()" style="margin-bottom:0;">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>Cidade:</label>
+                            <input type="text" id="f-cli-cidade" oninput="renderTableClientes()" placeholder="Filtrar cidade..." style="margin-bottom:0;">
+                        </div>
+                        <div class="filter-item">
+                            <label>Whats:</label>
+                            <input type="text" id="f-cli-whats" oninput="renderTableClientes()" placeholder="Filtrar telefone..." style="margin-bottom:0;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="table-clientes">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Cidade</th>
+                                <th style="width:80px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -569,7 +606,7 @@ v<!DOCTYPE html>
                 <h3 style="margin:0 0 10px 0">📋 Relatório Filtrado <span id="dash-count" style="font-size:0.8em; font-weight:normal; color:#666"></span></h3>
                 <div class="table-wrapper">
                     <table id="dash-table">
-                        <thead><tr><th>Data</th><th>Etapa</th><th>#Lead</th><th>Cliente</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Etapa</th><th>Cliente</th><th>Status</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -656,41 +693,82 @@ v<!DOCTYPE html>
             listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
             const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
             const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend', 'f-leads-atend'];
-            selects.forEach(id => { const el = document.getElementById(id); if(el) { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
+            selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
             listaAtendentes.forEach(a => {
                 tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
                 const opt = `<option value="${a.nome}">${a.nome}</option>`;
-                selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML += opt; });
+                selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
             });
         });
 
         onSnapshot(collection(db, "clientes"), (snap) => {
             listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
-            const tb = document.querySelector('#table-clientes tbody'); tb.innerHTML = '';
+            
             const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
-            selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = '<option value="">Selecione...</option>'; });
+            selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML = '<option value="">Selecione...</option>'; });
+            
+            // Popula filtros de tipos no Cadastro Geral
+            const fTipoSel = document.getElementById('f-cli-tipo');
+            if(fTipoSel) {
+                const valAntigo = fTipoSel.value;
+                const tiposUnicos = [...new Set(listaClientes.map(c => c.tipo))].filter(Boolean).sort();
+                fTipoSel.innerHTML = '<option value="todos">Todos</option>';
+                tiposUnicos.forEach(t => fTipoSel.innerHTML += `<option value="${t}">${t}</option>`);
+                fTipoSel.value = tiposUnicos.includes(valAntigo) ? valAntigo : 'todos';
+            }
+
             listaClientes.forEach(c => {
-                tb.innerHTML += `<tr onclick="editarCli('${c.id}')" style="cursor:pointer"><td>${c.nome_empresa}</td><td>${c.tipo||'Cliente'}</td><td>${c.cidade||''}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button></td></tr>`;
                 const opt = `<option value="${c.id}">${c.nome_empresa}</option>`;
-                selects.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML += opt; });
+                selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
             });
+
+            renderTableClientes();
             renderTableLeads();
         });
+
+        window.renderTableClientes = () => {
+            const tb = document.querySelector('#table-clientes tbody'); 
+            tb.innerHTML = '';
+            
+            const fNome = document.getElementById('f-cli-nome').value.toLowerCase();
+            const fTipo = document.getElementById('f-cli-tipo').value;
+            const fCidade = document.getElementById('f-cli-cidade').value.toLowerCase();
+            const fWhats = document.getElementById('f-cli-whats').value.toLowerCase();
+
+            listaClientes.forEach(c => {
+                const matchNome = (c.nome_empresa || "").toLowerCase().includes(fNome);
+                const matchTipo = fTipo === 'todos' || c.tipo === fTipo;
+                const matchCidade = (c.cidade || "").toLowerCase().includes(fCidade);
+                const matchWhats = (c.telefone || "").toLowerCase().includes(fWhats);
+
+                if (matchNome && matchTipo && matchCidade && matchWhats) {
+                    tb.innerHTML += `<tr onclick="editarCli('${c.id}')" style="cursor:pointer">
+                        <td>${c.nome_empresa}</td>
+                        <td>${c.tipo||'Cliente'}</td>
+                        <td>${c.cidade||''}</td>
+                        <td>
+                            <button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button> 
+                            <button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button>
+                        </td>
+                    </tr>`;
+                }
+            });
+        };
 
         onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
             listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
             renderFunnel(); renderTableLeads();
             const selOrcLead = document.getElementById('orc-lead-direto');
-            const filOrcLead = document.getElementById('f-orc-lead');
-            
             selOrcLead.innerHTML = '<option value="">Selecione...</option>';
-            filOrcLead.innerHTML = '<option value="todos">Todos os Leads</option>';
 
-            listaLeads.forEach(l => { 
-                const opt = `<option value="${l.id}">${l.numero_lead} - ${l.nome_cliente_cache}</option>`;
-                selOrcLead.innerHTML += opt;
-                filOrcLead.innerHTML += opt;
-            });
+            // Lead / Orçamento em ordem alfabética
+            [...listaLeads]
+                .sort((a, b) => (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || ""))
+                .forEach(l => { 
+                    const opt = `<option value="${l.id}">${l.nome_cliente_cache}</option>`;
+                    selOrcLead.innerHTML += opt;
+                });
+
             if(leadAtual) { const updated = listaLeads.find(l => l.id === leadAtual.id); if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); } }
         });
 
@@ -700,7 +778,6 @@ v<!DOCTYPE html>
             renderFunnel(); 
         });
 
-        // --- NOVO: EVENTO DE COLAR IMAGEM ---
         window.addEventListener('paste', async (e) => {
             if (!leadAtual || document.getElementById('view-leads').style.display === 'none') return;
             
@@ -845,7 +922,7 @@ v<!DOCTYPE html>
         window.renderTableOrcamentos = () => {
             const tb = document.querySelector('#table-orcamentos tbody');
             const fAtend = document.getElementById('f-orc-atend').value;
-            const fLead = document.getElementById('f-orc-lead').value;
+            const fLead = document.getElementById('f-orc-lead').value.toLowerCase();
             const fStatus = document.getElementById('f-orc-status').value;
             const fNoStart = document.getElementById('f-orc-no-start').checked;
             const fNoEnd = document.getElementById('f-orc-no-end').checked;
@@ -853,7 +930,7 @@ v<!DOCTYPE html>
             tb.innerHTML = '';
             listaOrcamentos.forEach(orc => {
                 const lead = listaLeads.find(l => l.id === orc.lead_id);
-                if(fLead !== 'todos' && orc.lead_id !== fLead) return;
+                if(fLead && lead && !lead.nome_cliente_cache.toLowerCase().includes(fLead)) return;
 
                 let histHtml = "";
                 let refLeadHtml = "";
@@ -894,7 +971,7 @@ v<!DOCTYPE html>
                     tb.innerHTML += `
                         <tr>
                             <td onclick="carregarOrcamentoRaiz('${orc.id}')" style="vertical-align: middle;">
-                                <b>${lead ? lead.numero_lead : 'N/A'} - ${lead ? lead.nome_cliente_cache : ''}</b><br>
+                                <b>${lead ? lead.nome_cliente_cache : ''}</b><br>
                                 <small style="color:var(--primary)">${orc.id_externo || 'Sem ID'}</small>
                             </td>
                             <td style="vertical-align:top; padding:0;">${refLeadHtml}</td>
@@ -988,7 +1065,7 @@ v<!DOCTYPE html>
             const orc = listaOrcamentos.find(x => x.id === id);
             if(!orc) return;
             const lead = listaLeads.find(l => l.id === orc.lead_id);
-            document.getElementById('modal-info-lead').innerText = `Lead: ${lead ? lead.numero_lead : '?'} | Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
+            document.getElementById('modal-info-lead').innerText = `Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
             const div = document.getElementById('lista-historico-apontamentos');
             div.innerHTML = '';
             
@@ -1087,7 +1164,7 @@ v<!DOCTYPE html>
 
                     const div = document.getElementById(cols[h.etapa]);
                     if(div) {
-                        div.innerHTML += `<div class="card ${cor}" onclick="editarLead('${lead.id}')"><span class="card-number">${lead.numero_lead||''}</span><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}</div></div>`;
+                        div.innerHTML += `<div class="card ${cor}" onclick="editarLead('${lead.id}')"><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}</div></div>`;
                     }
                 });
             });
@@ -1169,7 +1246,7 @@ v<!DOCTYPE html>
                                     if(h.data_programada && h.data_realizada) { const p = new Date(h.data_programada), r = new Date(h.data_realizada); if(r > p) { isDelayed = true; totalDelayHours += (r - p) / (1000*60*60); } }
                                     else if (h.data_programada && !h.data_realizada && new Date(h.data_programada) < new Date()) { isDelayed = true; totalDelayHours += (new Date() - new Date(h.data_programada)) / (1000*60*60); }
                                     if(isDelayed) countAtraso++; else countPrazo++;
-                                    filteredData.push({id: l.id, dt: dataRef.toLocaleString('pt-BR'), etapa: h.etapa, num: l.numero_lead, cli: l.nome_cliente_cache, st: isDelayed ? 'Atrasado' : 'No Prazo'});
+                                    filteredData.push({id: l.id, dt: dataRef.toLocaleString('pt-BR'), etapa: h.etapa, cli: l.nome_cliente_cache, st: isDelayed ? 'Atrasado' : 'No Prazo'});
                                 }
                             }
                         }
@@ -1192,7 +1269,7 @@ v<!DOCTYPE html>
             if(chartCycleTime) chartCycleTime.destroy(); chartCycleTime = new Chart(document.getElementById('chartCycleTime'), { type: 'line', data: { labels: ['Contato', 'Orçamento', 'Negociação', 'Fechado'], datasets: [{ label: 'Dias desde a criação', data: cycleMeans, borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] }, options: { maintainAspectRatio: false } });
         }
 
-        function renderDashTable(data) { const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = ''; document.getElementById('dash-count').innerText = `(${data.length} registros)`; data.forEach(r => tb.innerHTML += `<tr onclick="editarLead('${r.id}')"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.num}</td><td>${r.cli}</td><td>${r.st}</td></tr>`); }
+        function renderDashTable(data) { const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = ''; document.getElementById('dash-count').innerText = `(${data.length} registros)`; data.forEach(r => tb.innerHTML += `<tr onclick="editarLead('${r.id}')"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.cli}</td><td>${r.st}</td></tr>`); }
 
         document.getElementById('form-historico').onsubmit = async(e) => {
             e.preventDefault(); const idx = document.getElementById('hist-index').value;
@@ -1250,8 +1327,8 @@ v<!DOCTYPE html>
         window.editarAtend = (id) => { const a = listaAtendentes.find(x => x.id === id); switchView('atendentes'); document.getElementById('atend-id').value = a.id; document.getElementById('atend-nome').value = a.nome; document.getElementById('atend-email').value = a.email; document.getElementById('atend-whats').value = a.whats || ''; };
         
         window.renderTimeline = () => { 
-            const div = document.getElementById('timeline-list'); div.innerHTML = ''; const histArray = (leadAtual.historico || []).map((h, i) => ({...h, idx: i}));
-            histArray.reverse().forEach((h, indexInTimeline) => { 
+            const div = document.getElementById('timeline-list'); div.innerHTML = ''; const hArray = (leadAtual.historico || []).map((h, i) => ({...h, idx: i}));
+            hArray.reverse().forEach((h, indexInTimeline) => { 
                 const btnNovo = (indexInTimeline === 0) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado neste">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? contactData.telefone.replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
