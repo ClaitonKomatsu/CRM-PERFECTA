@@ -761,7 +761,6 @@
             const selOrcLead = document.getElementById('orc-lead-direto');
             selOrcLead.innerHTML = '<option value="">Selecione...</option>';
 
-            // Lead / Orçamento em ordem alfabética
             [...listaLeads]
                 .sort((a, b) => (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || ""))
                 .forEach(l => { 
@@ -826,6 +825,9 @@
         };
 
         window.checkRegistroDireto = (tipo) => {
+            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
+            if(indexEditing === -1) return; // Não permite registro auto em novo
+            
             const campoData = document.getElementById('apt-' + tipo + '-direto').value;
             const campoReg = document.getElementById('apt-reg-' + tipo + '-direto');
             if(campoData && !campoReg.value) {
@@ -841,16 +843,29 @@
             
             const statusVal = document.getElementById('apt-status-direto').value;
             const inicioVal = document.getElementById('apt-inicio-direto').value;
+            const regInicioVal = document.getElementById('apt-reg-inicio-direto').value;
+            const fimVal = document.getElementById('apt-fim-direto').value;
+            const regFimVal = document.getElementById('apt-reg-fim-direto').value;
             const prazoVal = document.getElementById('apt-prazo-direto').value;
             const atendenteVal = document.getElementById('apt-atendente-direto').value;
 
-            const statusPermitidos = ['Programado', 'Solicitado Alteração', 'Apresentação'];
-            if (!statusPermitidos.includes(statusVal)) {
+            // REGRA: Novo apontamento deve estar com campos de tempo vazios
+            if (indexEditing === -1) {
+                if (inicioVal || regInicioVal || fimVal || regFimVal) {
+                    alert("Para um NOVO Apontamento, os campos de Dia/Hora Início/Fim e seus Registros devem estar vazios. Registre o tempo apenas na alteração de um registro já gravado.");
+                    return;
+                }
+            }
+
+            const statusPermitidosSemTrava = ['Programado', 'Solicitado Alteração', 'Apresentação'];
+            if (!statusPermitidosSemTrava.includes(statusVal)) {
                 let aberto = false;
                 listaOrcamentos.forEach(orc => {
                     if (orc.historico_trabalhos) {
                         orc.historico_trabalhos.forEach((h, idx) => {
+                            // Se for edição do mesmo item, ignora
                             if (orcId === orc.id && indexEditing === idx) return;
+                            // Se o atendente tiver algo iniciado e não finalizado
                             if (h.atendente === atendenteVal && h.inicio && !h.fim) {
                                 aberto = true;
                             }
@@ -868,19 +883,14 @@
                 return;
             }
 
-            if (!inicioVal && statusVal !== 'Programado' && statusVal !== 'Solicitado Alteração') {
-                alert("O campo 'Dia/Hora Início' é obrigatório para o status selecionado.");
-                return;
-            }
-
             const item = {
                 atendente: atendenteVal,
                 hist_num: document.getElementById('apt-hist-ref-direto').value,
                 id_externo: document.getElementById('apt-id-externo-direto').value,
                 inicio: inicioVal,
-                reg_inicio: document.getElementById('apt-reg-inicio-direto').value || (inicioVal ? new Date().toLocaleString('pt-BR') : ""),
-                fim: document.getElementById('apt-fim-direto').value,
-                reg_fim: document.getElementById('apt-reg-fim-direto').value || (document.getElementById('apt-fim-direto').value ? new Date().toLocaleString('pt-BR') : ""),
+                reg_inicio: regInicioVal || (inicioVal ? new Date().toLocaleString('pt-BR') : ""),
+                fim: fimVal,
+                reg_fim: regFimVal || (fimVal ? new Date().toLocaleString('pt-BR') : ""),
                 prazo: prazoVal,
                 status: statusVal,
                 obs: document.getElementById('apt-obs-direto').value,
@@ -1010,6 +1020,7 @@
             document.getElementById('apt-atendente-direto').value = h.atendente;
             document.getElementById('apt-hist-ref-direto').value = h.hist_num;
             document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
+            // Ao duplicar, limpa os campos de tempo conforme a nova regra de "Novo"
             document.getElementById('apt-inicio-direto').value = "";
             document.getElementById('apt-reg-inicio-direto').value = "";
             document.getElementById('apt-fim-direto').value = "";
@@ -1058,6 +1069,8 @@
             document.getElementById('form-apontamento-direto').reset();
             document.getElementById('apt-orc-id-direto').value = "";
             document.getElementById('apt-index-editing-direto').value = "-1";
+            document.getElementById('apt-reg-inicio-direto').value = "";
+            document.getElementById('apt-reg-fim-direto').value = "";
             togglePrazoRequirement('Programado');
         };
 
