@@ -885,6 +885,7 @@
             if (!allow) {
                 // Tenta jogar pra primeira permitida
                 if(p.funil_dash.ver) switchView('funil');
+                else if(p.funil_dash.ver_dash) switchView('dashboard');
                 else if(p.leads.ver) switchView('leads');
                 else if(p.orcamentos.ver) switchView('orcamentos');
                 else if(p.cadastros.ver) switchView('cadastro');
@@ -907,35 +908,44 @@
                 const userEmailLower = user.email.trim().toLowerCase();
                 const isMaster = userEmailLower === 'claiton@perfectaesquadrias.com.br';
 
-                // Busca ou Cria Documento do Usuário
-                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-                
-                // Força a atualização se for o Master e o perfil ainda não estiver gravado como admin
-                if (!userDoc.exists() || (isMaster && userDoc.data().perfil !== 'admin')) {
-                    let perms = defaultPermissoes;
-                    let perfil = 'user';
-                    if (isMaster) {
-                        perms = adminPermissoes;
-                        perfil = 'admin';
+                // Busca ou Cria Documento do Usuário com Try/Catch para evitar falhas de permissão no BD
+                try {
+                    const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+                    
+                    // Força a atualização se for o Master e o perfil ainda não estiver gravado como admin
+                    if (!userDoc.exists() || (isMaster && userDoc.data().perfil !== 'admin')) {
+                        let perms = defaultPermissoes;
+                        let perfil = 'user';
+                        if (isMaster) {
+                            perms = adminPermissoes;
+                            perfil = 'admin';
+                        }
+                        const newUserObj = { email: userEmailLower, perfil, permissoes: perms, created_at: serverTimestamp() };
+                        await setDoc(doc(db, "usuarios", user.uid), newUserObj);
+                        currentUser = { uid: user.uid, ...newUserObj };
+                    } else {
+                        currentUser = { uid: user.uid, ...userDoc.data() };
                     }
-                    const newUserObj = { email: userEmailLower, perfil, permissoes: perms, created_at: serverTimestamp() };
-                    await setDoc(doc(db, "usuarios", user.uid), newUserObj);
-                    currentUser = { uid: user.uid, ...newUserObj };
-                } else {
-                    currentUser = { uid: user.uid, ...userDoc.data() };
+                } catch (error) {
+                    console.warn("Aviso: Falha ao gravar/ler usuário no Firestore. Usando fallback local.", error);
+                    // Fallback para não travar o carregamento do sistema para novos usuários
+                    currentUser = { 
+                        uid: user.uid, 
+                        email: userEmailLower, 
+                        perfil: isMaster ? 'admin' : 'user', 
+                        permissoes: isMaster ? adminPermissoes : defaultPermissoes 
+                    };
                 }
 
                 // CORREÇÃO: Failsafe para garantir que o objeto de permissões está sempre íntegro
-                // e que o usuário Master sempre tenha permissão total forçada, evitando erros de DB.
                 if (isMaster || currentUser.perfil === 'admin') {
                     currentPerms = adminPermissoes;
                 } else {
-                    // Garante que a estrutura exista mesmo em documentos antigos/incompletos
                     currentPerms = {
-                        funil_dash: currentUser.permissoes?.funil_dash || defaultPermissoes.funil_dash,
-                        leads: currentUser.permissoes?.leads || defaultPermissoes.leads,
-                        orcamentos: currentUser.permissoes?.orcamentos || defaultPermissoes.orcamentos,
-                        cadastros: currentUser.permissoes?.cadastros || defaultPermissoes.cadastros
+                        funil_dash: { ...defaultPermissoes.funil_dash, ...(currentUser.permissoes?.funil_dash || {}) },
+                        leads: { ...defaultPermissoes.leads, ...(currentUser.permissoes?.leads || {}) },
+                        orcamentos: { ...defaultPermissoes.orcamentos, ...(currentUser.permissoes?.orcamentos || {}) },
+                        cadastros: { ...defaultPermissoes.cadastros, ...(currentUser.permissoes?.cadastros || {}) }
                     };
                 }
                 
@@ -1006,7 +1016,7 @@
             }
 
             // Leads
-            if (currentPerms.leads.ver || currentPerms.funil_dash.ver) {
+            if (currentPerms.leads.ver || currentPerms.funil_dash.ver || currentPerms.funil_dash.ver_dash) {
                 listenersAtivos.push(onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
                     listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
                     if(currentPerms.funil_dash.ver) renderFunnel(); 
@@ -1024,7 +1034,7 @@
             }
 
             // Apontamentos (Orçamentos)
-            if (currentPerms.orcamentos.ver || currentPerms.funil_dash.ver) {
+            if (currentPerms.orcamentos.ver || currentPerms.funil_dash.ver || currentPerms.funil_dash.ver_dash) {
                 listenersAtivos.push(onSnapshot(query(collection(db, "apontamentos"), orderBy("updated_at", "desc")), (snap) => {
                     listaOrcamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
                     if(currentPerms.orcamentos.ver) renderTableOrcamentos();
@@ -1446,7 +1456,17 @@
 
         window.processarDashboard = () => {
             if(!currentPerms || !currentPerms.funil_dash.ver_dash) return;
-            const iniStr = document.getElementById('dash-inicio').value; const fimStr = document.getElementById('dash-fim').value; if(!iniStr || !fimStr) return;
+            
+            let iniStr = document.getElementById('dash-inicio').value; 
+            let fimStr = document.getElementById('dash-fim').value; 
+            if(!iniStr || !fimStr) {
+                const h = new Date();
+                iniStr = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0];
+                fimStr = h.toISOString().split('T')[0];
+                document.getElementById('dash-inicio').value = iniStr;
+                document.getElementById('dash-fim').value = fimStr;
+            }
+            
             const ini = new Date(iniStr + "T00:00:00"), fim = new Date(fimStr + "T23:59:59"), atendente = document.getElementById('dash-atendente').value;
             const origemCount = {}, leadsDiaCount = {}, stageDurations = {}, cycleTimes = {contatado:[], orcamento:[], negociacao:[], fechado:[]}; let countPrazo=0, countAtraso=0, filteredData=[], totalDelayHours = 0;
 
