@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V15.1 (Full Star + Paste)</title>
+    <title>Perfecta CRM - V16.1 (Auth & Permissões)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -16,6 +16,7 @@
         
         nav { background: white; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100; }
         .brand { font-weight: bold; font-size: 1.2rem; color: var(--primary); }
+        .nav-buttons { display: flex; flex: 1; margin-left: 20px; }
         .nav-buttons button { background: transparent; border: none; padding: 10px 15px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; font-size: 0.95rem; transition: 0.3s; }
         .nav-buttons button:hover { background-color: #f8f9fa; }
         .nav-buttons button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: bold; }
@@ -101,35 +102,38 @@
         .filter-item { flex: 1; min-width: 150px; }
         .filter-check-group { display: flex; gap: 15px; padding: 5px 0; }
 
-        .hist-mini-card { 
-            background: #fdfdfd; 
-            border: 1px solid #eee; 
-            border-left: 3px solid var(--info); 
-            padding: 6px 12px; 
-            margin-top: 5px; 
-            border-radius: 4px; 
-            font-size: 0.85em; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        .hist-mini-card { background: #fdfdfd; border: 1px solid #eee; border-left: 3px solid var(--info); padding: 6px 12px; margin-top: 5px; border-radius: 4px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; }
         .hist-mini-card:hover { background: #f0f7ff; }
+        .actions-cell { display: flex; align-items: center; justify-content: center; gap: 8px; height: 100%; }
 
-        .actions-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 8px; 
-            height: 100%;
-        }
+        /* Estilos Extras - Permissões & Login */
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .perm-group { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+        .perm-group h4 { margin: 0 0 10px 0; font-size: 0.9em; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .perm-row { display: flex; gap: 15px; font-size: 0.85em; }
+        .perm-row label { display: flex; align-items: center; gap: 5px; margin: 0; font-weight: normal; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <nav>
-        <div class="brand">Perfecta CRM v15.1</div>
+    <div id="login-overlay">
+        <div class="form-area" style="width: 350px;">
+            <h2 style="text-align:center; color:var(--primary); margin-top: 0;">Perfecta CRM Access</h2>
+            <form id="form-login">
+                <label>E-mail</label>
+                <input type="email" id="log-email" required>
+                <label>Senha</label>
+                <input type="password" id="log-pass" required minlength="6">
+                <button type="submit" class="btn-save" id="btn-login-submit">Entrar</button>
+                <div style="text-align:center; margin-top:15px; font-size:0.85em;">
+                    <a href="#" id="toggle-login-mode" style="color:var(--primary); text-decoration:none;">Não tem conta? Cadastrar-se</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <nav id="main-nav" style="display: none;">
+        <div class="brand">Perfecta CRM v16.1</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
             <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
@@ -137,12 +141,17 @@
             <button onclick="switchView('cadastro')" id="btn-cadastro">👥 Cadastro</button>
             <button onclick="switchView('atendentes')" id="btn-atendentes">💼 Atendentes</button>
             <button onclick="switchView('dashboard')" id="btn-dashboard">📈 Dashboard</button>
+            <button onclick="switchView('usuarios')" id="btn-usuarios" style="color:#ffc107; font-weight:bold;">🔒 Usuários</button>
+        </div>
+        <div style="display:flex; align-items:center; gap: 15px;">
+            <span id="user-info-display" style="font-size: 0.85em; color: #555; font-weight:bold;"></span>
+            <button onclick="logoutApp()" style="color: #dc3545; background: none; border: none; cursor: pointer; font-size:0.9em;">Sair</button>
         </div>
     </nav>
 
     <section id="view-funil" class="view-section active">
         <div class="funnel-filters">
-            <button onclick="novoLeadDireto()" style="background:#28a745; color:white; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">+ Novo</button>
+            <button id="btn-novo-lead-funil" onclick="novoLeadDireto()" style="background:#28a745; color:white; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;">+ Novo</button>
             <label>Atendente: <select id="f-funil-atend" onchange="renderFunnel()" style="margin:0; width:110px; padding:4px;"><option value="todos">Todos</option></select></label>
             <label>📅 De: <input type="date" id="f-funil-ini" onchange="renderFunnel()" style="margin:0; width:110px; padding:2px;"></label>
             <label>Até: <input type="date" id="f-funil-fim" onchange="renderFunnel()" style="margin:0; width:110px; padding:2px;"></label>
@@ -163,6 +172,16 @@
             <label style="margin-left:10px; border-left:1px solid #ddd; padding-left:15px; color:var(--primary); font-weight:bold;">
                 <input type="checkbox" id="f-funil-all" onchange="renderFunnel()" checked> Hist. Completo
             </label>
+
+            <div style="display:flex; gap:8px; border-left:1px solid #ddd; padding-left:15px; margin-left:5px;">
+                <span style="font-weight:bold; color:#555; margin-right:5px; align-self: center;">Etapas:</span>
+                <label><input type="checkbox" id="f-col-novo" checked onchange="toggleFunnelCol('novo')"> Novos</label>
+                <label><input type="checkbox" id="f-col-contatado" checked onchange="toggleFunnelCol('contatado')"> Contato</label>
+                <label><input type="checkbox" id="f-col-orcamento" checked onchange="toggleFunnelCol('orcamento')"> Orçamento</label>
+                <label><input type="checkbox" id="f-col-negociacao" checked onchange="toggleFunnelCol('negociacao')"> Negociação</label>
+                <label><input type="checkbox" id="f-col-fechado" checked onchange="toggleFunnelCol('fechado')"> Fechados</label>
+                <label><input type="checkbox" id="f-col-perdido" checked onchange="toggleFunnelCol('perdido')"> Perdidos</label>
+            </div>
         </div>
         <div class="board">
             <div id="w-novo" class="column"><div class="column-header col-novo">Novos <span id="c-novo">0</span></div><div class="column-body" id="list-novo"></div></div>
@@ -235,7 +254,7 @@
                     <label>Observações</label>
                     <textarea id="apt-obs-direto" style="height:60px;"></textarea>
 
-                    <button type="submit" class="btn-save" style="background:#17a2b8;">Gravar Apontamento</button>
+                    <button type="submit" class="btn-save" style="background:#17a2b8;" id="btn-save-apontamento">Gravar Apontamento</button>
                     <button type="button" onclick="limparFormApontamentoDireto()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
                 </form>
             </div>
@@ -318,7 +337,7 @@
                     <select id="lead-origem" required>
                         <option>Instagram</option><option>Tiktok</option><option>Facebook</option><option>Site</option><option>Google</option>
                         <option>Prospecção</option><option>Manutenção</option><option>Indicação</option><option>Cliente</option>
-			<option>Reativação</option><option>Outros</option>
+			            <option>Reativação</option><option>Outros</option>
                     </select>
 
                     <label>Indicação</label>
@@ -363,13 +382,13 @@
                     <select id="lead-responsavel" onchange="showInfo('responsavel', this.value)"><option value="">Selecione...</option></select>
                     <span id="info-responsavel" class="contact-info-display"></span>
 
-                    <button type="submit" class="btn-save">Salvar Dados Básicos</button>
+                    <button type="submit" class="btn-save" id="btn-save-lead-main">Salvar Dados Básicos</button>
                 </form>
 
                 <div id="area-arquivos" style="display:none; margin-top:20px;">
                     <hr><h3>📁 Arquivos</h3>
                     <input type="file" id="lead-file-input" style="display:none" onchange="handleFileUpload(this.files)">
-                    <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px;">+ Upload de Arquivo</button>
+                    <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px;" id="btn-upload-file">+ Upload de Arquivo</button>
                     <div id="lead-files-list"></div>
                 </div>
 
@@ -507,7 +526,7 @@
                     <label>E-mail</label><input type="email" id="cli-email">
                     <label>Cidade</label><input type="text" id="cli-cidade">
                     <label>Endereço</label><input type="text" id="cli-endereco">
-                    <button type="submit" class="btn-save">Salvar</button>
+                    <button type="submit" class="btn-save" id="btn-save-cliente">Salvar</button>
                 </form>
             </div>
             <div class="list-area">
@@ -562,7 +581,7 @@
                     <label>Nome *</label><input type="text" id="atend-nome" required>
                     <label>Email</label><input type="email" id="atend-email" required>
                     <label>Whats</label><input type="text" id="atend-whats" placeholder="(99) 99999-9999">
-                    <button type="submit" class="btn-save">Salvar</button>
+                    <button type="submit" class="btn-save" id="btn-save-atendente">Salvar</button>
                 </form>
             </div>
             <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
@@ -614,20 +633,118 @@
         </div>
     </section>
 
+    <section id="view-usuarios" class="view-section">
+        <div class="management-container">
+            <div class="form-area" style="width:400px; background:white;">
+                <h2 style="margin-top:0;">Permissões de Acesso</h2>
+                <form id="form-permissoes">
+                    <input type="hidden" id="perm-user-uid">
+                    <label>E-mail do Usuário Selecionado</label>
+                    <input type="email" id="perm-user-email" readonly class="readonly-field">
+                    
+                    <label>Perfil de Sistema</label>
+                    <select id="perm-user-perfil" required>
+                        <option value="admin">Administrador (Total)</option>
+                        <option value="user" selected>Padrão (Configurável)</option>
+                    </select>
+
+                    <div id="area-config-perms">
+                        <div class="perm-group">
+                            <h4>📊 Funil & Dashboard</h4>
+                            <div class="perm-row">
+                                <label><input type="checkbox" id="p-funil-ver"> Ver Funil</label>
+                                <label><input type="checkbox" id="p-dash-ver"> Ver Dash</label>
+                            </div>
+                        </div>
+
+                        <div class="perm-group">
+                            <h4>🎯 Leads</h4>
+                            <div class="perm-row">
+                                <label><input type="checkbox" id="p-leads-ver"> Ver</label>
+                                <label><input type="checkbox" id="p-leads-gravar"> Gravar</label>
+                                <label><input type="checkbox" id="p-leads-excluir"> Excluir</label>
+                            </div>
+                        </div>
+
+                        <div class="perm-group">
+                            <h4>🕐 Orçamentos (Apontamentos)</h4>
+                            <div class="perm-row">
+                                <label><input type="checkbox" id="p-orc-ver"> Ver</label>
+                                <label><input type="checkbox" id="p-orc-gravar"> Gravar</label>
+                                <label><input type="checkbox" id="p-orc-excluir"> Excluir</label>
+                            </div>
+                        </div>
+
+                        <div class="perm-group">
+                            <h4>👥 Cadastros & Equipe</h4>
+                            <div class="perm-row">
+                                <label><input type="checkbox" id="p-cad-ver"> Ver</label>
+                                <label><input type="checkbox" id="p-cad-gravar"> Gravar</label>
+                                <label><input type="checkbox" id="p-cad-excluir"> Excluir</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-save" style="margin-top: 10px;">Salvar Permissões</button>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button type="button" onclick="removerUsuarioFirestore()" style="color:var(--danger); background:none; border:none; cursor:pointer; font-size:0.9em;">🗑️ Remover Usuário do Firestore</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="list-area" style="background:white;">
+                <h2 style="margin-top:0;">Usuários Cadastrados</h2>
+                <div class="table-wrapper">
+                    <table id="table-usuarios">
+                        <thead>
+                            <tr>
+                                <th>E-mail</th>
+                                <th>Perfil</th>
+                                <th style="width:80px; text-align:center;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
         const firebaseConfig = { apiKey: "AIzaSyDxikX_gLL3l2fQuHmSZUai5-1CgBGp2ao", authDomain: "orcamento-80415.firebaseapp.com", projectId: "orcamento-80415", storageBucket: "orcamento-80415.firebasestorage.app", messagingSenderId: "767008319616", appId: "1:767008319616:web:78b45f56f92ce7a5091e65" };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const storage = getStorage(app);
+        const auth = getAuth(app);
 
-        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], leadAtual=null, starFilters=[1,2,3,4,5];
+        // VARIÁVEIS DE ESTADO
+        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
-        
         let leadSortAsc = false;
+        
+        // AUTH & RBAC (Role-Based Access Control)
+        let currentUser = null;
+        let currentPerms = null;
+        let listenersAtivos = []; // Para poder desligar ao dar logoff
+
+        const defaultPermissoes = {
+            funil_dash: { ver: true, ver_dash: true },
+            leads: { ver: true, gravar: true, excluir: false },
+            orcamentos: { ver: true, gravar: true, excluir: false },
+            cadastros: { ver: true, gravar: true, excluir: false }
+        };
+
+        const adminPermissoes = {
+            funil_dash: { ver: true, ver_dash: true },
+            leads: { ver: true, gravar: true, excluir: true },
+            orcamentos: { ver: true, gravar: true, excluir: true },
+            cadastros: { ver: true, gravar: true, excluir: true }
+        };
 
         function formatBR(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
         
@@ -689,45 +806,257 @@
             span.innerText = item ? `📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "";
         };
 
-        onSnapshot(collection(db, "atendentes"), (snap) => {
-            listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
-            const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
-            const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend', 'f-leads-atend'];
-            selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
-            listaAtendentes.forEach(a => {
-                tb.innerHTML += `<tr onclick="editarAtend('${a.id}')" style="cursor:pointer"><td>${a.nome}</td><td>${a.whats||'-'}</td><td><button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button> <button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button></td></tr>`;
-                const opt = `<option value="${a.nome}">${a.nome}</option>`;
-                selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
-            });
+        // ========== AUTHENTICATION ==========
+        let loginMode = 'login';
+        document.getElementById('toggle-login-mode').addEventListener('click', (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login-submit');
+            const toggleLink = document.getElementById('toggle-login-mode');
+            if (loginMode === 'login') {
+                loginMode = 'register';
+                btn.innerText = "Criar Conta";
+                toggleLink.innerText = "Já tem conta? Entrar";
+            } else {
+                loginMode = 'login';
+                btn.innerText = "Entrar";
+                toggleLink.innerText = "Não tem conta? Cadastrar-se";
+            }
         });
 
-        onSnapshot(collection(db, "clientes"), (snap) => {
-            listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
+        document.getElementById('form-login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('log-email').value;
+            const pass = document.getElementById('log-pass').value;
             
-            const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
-            selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML = '<option value="">Selecione...</option>'; });
+            try {
+                if (loginMode === 'login') {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                }
+            } catch (error) {
+                alert("Erro: " + error.message);
+            }
+        });
+
+        window.logoutApp = async () => {
+            if(confirm("Deseja sair do sistema?")) {
+                await signOut(auth);
+            }
+        };
+
+        // LÓGICA DE APLICAÇÃO DAS PERMISSÕES NAS TELAS
+        function aplicarPermissoesInterface() {
+            if (!currentPerms) return;
+            const p = currentPerms;
+            const isAdm = currentUser.perfil === 'admin';
+
+            // Menu Navegação
+            document.getElementById('btn-funil').style.display = p.funil_dash.ver ? 'block' : 'none';
+            document.getElementById('btn-dashboard').style.display = p.funil_dash.ver_dash ? 'block' : 'none';
+            document.getElementById('btn-leads').style.display = p.leads.ver ? 'block' : 'none';
+            document.getElementById('btn-orcamentos').style.display = p.orcamentos.ver ? 'block' : 'none';
+            document.getElementById('btn-cadastro').style.display = p.cadastros.ver ? 'block' : 'none';
+            document.getElementById('btn-atendentes').style.display = p.cadastros.ver ? 'block' : 'none';
+            document.getElementById('btn-usuarios').style.display = isAdm ? 'block' : 'none';
+
+            // Botões de Adicionar/Gravar (Esconde/Desabilita se não tiver permissão)
+            document.getElementById('btn-novo-lead-funil').style.display = p.leads.gravar ? 'inline-block' : 'none';
+            document.getElementById('btn-save-lead-main').disabled = !p.leads.gravar;
+            document.getElementById('btn-save-hist').disabled = !p.leads.gravar;
+            document.getElementById('btn-upload-file').disabled = !p.leads.gravar;
             
-            // Popula filtros de tipos no Cadastro Geral
-            const fTipoSel = document.getElementById('f-cli-tipo');
-            if(fTipoSel) {
-                const valAntigo = fTipoSel.value;
-                const tiposUnicos = [...new Set(listaClientes.map(c => c.tipo))].filter(Boolean).sort();
-                fTipoSel.innerHTML = '<option value="todos">Todos</option>';
-                tiposUnicos.forEach(t => fTipoSel.innerHTML += `<option value="${t}">${t}</option>`);
-                fTipoSel.value = tiposUnicos.includes(valAntigo) ? valAntigo : 'todos';
+            document.getElementById('btn-save-apontamento').disabled = !p.orcamentos.gravar;
+            
+            document.getElementById('btn-save-cliente').disabled = !p.cadastros.gravar;
+            document.getElementById('btn-save-atendente').disabled = !p.cadastros.gravar;
+
+            // Para forçar o redirecionamento caso esteja numa tela não permitida
+            let activeView = document.querySelector('.view-section.active').id;
+            activeView = activeView.replace('view-', '');
+            let allow = true;
+            if (activeView === 'funil' && !p.funil_dash.ver) allow = false;
+            if (activeView === 'dashboard' && !p.funil_dash.ver_dash) allow = false;
+            if (activeView === 'leads' && !p.leads.ver) allow = false;
+            if (activeView === 'orcamentos' && !p.orcamentos.ver) allow = false;
+            if ((activeView === 'cadastro' || activeView === 'atendentes') && !p.cadastros.ver) allow = false;
+            if (activeView === 'usuarios' && !isAdm) allow = false;
+            
+            if (!allow) {
+                // Tenta jogar pra primeira permitida
+                if(p.funil_dash.ver) switchView('funil');
+                else if(p.leads.ver) switchView('leads');
+                else if(p.orcamentos.ver) switchView('orcamentos');
+                else if(p.cadastros.ver) switchView('cadastro');
             }
 
-            listaClientes.forEach(c => {
-                const opt = `<option value="${c.id}">${c.nome_empresa}</option>`;
-                selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
-            });
-
+            // Re-renderizar listas para aplicar restrições de botões de edição/exclusão em tempo real
             renderTableClientes();
             renderTableLeads();
+            renderTableOrcamentos();
+            renderFunnel();
+        }
+
+        // MONITORA ESTADO DO LOGIN
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-nav').style.display = 'flex';
+                document.getElementById('user-info-display').innerText = user.email;
+
+                const userEmailLower = user.email.trim().toLowerCase();
+                const isMaster = userEmailLower === 'claiton@perfectaesquadrias.com.br';
+
+                // Busca ou Cria Documento do Usuário
+                const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+                
+                // Força a atualização se for o Master e o perfil ainda não estiver gravado como admin
+                if (!userDoc.exists() || (isMaster && userDoc.data().perfil !== 'admin')) {
+                    let perms = defaultPermissoes;
+                    let perfil = 'user';
+                    if (isMaster) {
+                        perms = adminPermissoes;
+                        perfil = 'admin';
+                    }
+                    const newUserObj = { email: userEmailLower, perfil, permissoes: perms, created_at: serverTimestamp() };
+                    await setDoc(doc(db, "usuarios", user.uid), newUserObj);
+                    currentUser = { uid: user.uid, ...newUserObj };
+                } else {
+                    currentUser = { uid: user.uid, ...userDoc.data() };
+                }
+
+                // CORREÇÃO: Failsafe para garantir que o objeto de permissões está sempre íntegro
+                // e que o usuário Master sempre tenha permissão total forçada, evitando erros de DB.
+                if (isMaster || currentUser.perfil === 'admin') {
+                    currentPerms = adminPermissoes;
+                } else {
+                    // Garante que a estrutura exista mesmo em documentos antigos/incompletos
+                    currentPerms = {
+                        funil_dash: currentUser.permissoes?.funil_dash || defaultPermissoes.funil_dash,
+                        leads: currentUser.permissoes?.leads || defaultPermissoes.leads,
+                        orcamentos: currentUser.permissoes?.orcamentos || defaultPermissoes.orcamentos,
+                        cadastros: currentUser.permissoes?.cadastros || defaultPermissoes.cadastros
+                    };
+                }
+                
+                aplicarPermissoesInterface();
+                iniciarListenersDeDados();
+                
+            } else {
+                // Reset Completo ao sair
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('main-nav').style.display = 'none';
+                document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+                
+                listenersAtivos.forEach(unsub => unsub()); // Desliga sync do firebase
+                listenersAtivos = [];
+                listaLeads=[]; listaClientes=[]; listaAtendentes=[]; listaOrcamentos=[]; listaUsuarios=[];
+                currentUser = null; currentPerms = null;
+                document.getElementById('form-login').reset();
+            }
         });
 
+
+        // ========== CARREGAMENTO DE DADOS ==========
+        function iniciarListenersDeDados() {
+            if (!currentPerms) return;
+            
+            // Atendentes
+            if (currentPerms.cadastros.ver) {
+                listenersAtivos.push(onSnapshot(collection(db, "atendentes"), (snap) => {
+                    listaAtendentes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome.localeCompare(b.nome));
+                    const tb = document.querySelector('#table-atendentes tbody'); tb.innerHTML = '';
+                    const selects = ['hist-atendente', 'f-funil-atend', 'dash-atendente', 'apt-atendente-direto', 'f-orc-atend', 'f-leads-atend'];
+                    selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') { const firstOption = el.querySelector('option'); el.innerHTML = ''; if(firstOption) el.appendChild(firstOption); } });
+                    listaAtendentes.forEach(a => {
+                        const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button>` : '';
+                        const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button>` : '';
+                        tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarAtend('${a.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${a.nome}</td><td>${a.whats||'-'}</td><td>${btnEdit} ${btnDel}</td></tr>`;
+                        const opt = `<option value="${a.nome}">${a.nome}</option>`;
+                        selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
+                    });
+                }));
+            }
+
+            // Clientes
+            if (currentPerms.cadastros.ver || currentPerms.leads.ver) {
+                listenersAtivos.push(onSnapshot(collection(db, "clientes"), (snap) => {
+                    listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
+                    
+                    const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
+                    selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML = '<option value="">Selecione...</option>'; });
+                    
+                    const fTipoSel = document.getElementById('f-cli-tipo');
+                    if(fTipoSel) {
+                        const valAntigo = fTipoSel.value;
+                        const tiposUnicos = [...new Set(listaClientes.map(c => c.tipo))].filter(Boolean).sort();
+                        fTipoSel.innerHTML = '<option value="todos">Todos</option>';
+                        tiposUnicos.forEach(t => fTipoSel.innerHTML += `<option value="${t}">${t}</option>`);
+                        fTipoSel.value = tiposUnicos.includes(valAntigo) ? valAntigo : 'todos';
+                    }
+
+                    listaClientes.forEach(c => {
+                        const opt = `<option value="${c.id}">${c.nome_empresa}</option>`;
+                        selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
+                    });
+
+                    if(currentPerms.cadastros.ver) renderTableClientes();
+                    if(currentPerms.leads.ver) renderTableLeads();
+                }));
+            }
+
+            // Leads
+            if (currentPerms.leads.ver || currentPerms.funil_dash.ver) {
+                listenersAtivos.push(onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
+                    listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
+                    if(currentPerms.funil_dash.ver) renderFunnel(); 
+                    if(currentPerms.leads.ver) renderTableLeads();
+                    
+                    const selOrcLead = document.getElementById('orc-lead-direto');
+                    if(selOrcLead) {
+                        selOrcLead.innerHTML = '<option value="">Selecione...</option>';
+                        [...listaLeads].sort((a, b) => (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || "")).forEach(l => { 
+                            selOrcLead.innerHTML += `<option value="${l.id}">${l.nome_cliente_cache}</option>`;
+                        });
+                    }
+                    if(leadAtual) { const updated = listaLeads.find(l => l.id === leadAtual.id); if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); } }
+                }));
+            }
+
+            // Apontamentos (Orçamentos)
+            if (currentPerms.orcamentos.ver || currentPerms.funil_dash.ver) {
+                listenersAtivos.push(onSnapshot(query(collection(db, "apontamentos"), orderBy("updated_at", "desc")), (snap) => {
+                    listaOrcamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
+                    if(currentPerms.orcamentos.ver) renderTableOrcamentos();
+                    if(currentPerms.funil_dash.ver) renderFunnel(); 
+                }));
+            }
+
+            // Tela de Usuários (Apenas Admin)
+            if (currentUser && currentUser.perfil === 'admin') {
+                listenersAtivos.push(onSnapshot(collection(db, "usuarios"), (snap) => {
+                    let rawUsers = snap.docs.map(d => ({...d.data(), uid: d.id}));
+                    
+                    // Deduplicar usuários por e-mail na visualização
+                    let uniqueUsers = [];
+                    let seenEmails = new Set();
+                    for(let u of rawUsers) {
+                        let e = (u.email || "").toLowerCase().trim();
+                        if(!seenEmails.has(e)) {
+                            seenEmails.add(e);
+                            uniqueUsers.push(u);
+                        }
+                    }
+                    listaUsuarios = uniqueUsers;
+                    renderTableUsuarios();
+                }));
+            }
+        }
+
+        // ========== RENDER FUNCS (COM CHECAGEM DE RBAC) ==========
         window.renderTableClientes = () => {
             const tb = document.querySelector('#table-clientes tbody'); 
+            if(!tb || !currentPerms) return;
             tb.innerHTML = '';
             
             const fNome = document.getElementById('f-cli-nome').value.toLowerCase();
@@ -742,195 +1071,21 @@
                 const matchWhats = (c.telefone || "").toLowerCase().includes(fWhats);
 
                 if (matchNome && matchTipo && matchCidade && matchWhats) {
-                    tb.innerHTML += `<tr onclick="editarCli('${c.id}')" style="cursor:pointer">
+                    const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button>` : '';
+                    const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button>` : '';
+                    tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarCli('${c.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}">
                         <td>${c.nome_empresa}</td>
                         <td>${c.tipo||'Cliente'}</td>
                         <td>${c.cidade||''}</td>
-                        <td>
-                            <button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button> 
-                            <button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button>
-                        </td>
+                        <td>${btnEdit} ${btnDel}</td>
                     </tr>`;
                 }
             });
         };
 
-        onSnapshot(query(collection(db, "leads"), orderBy("created_at", "desc")), (snap) => {
-            listaLeads = snap.docs.map(d => ({...d.data(), id: d.id}));
-            renderFunnel(); renderTableLeads();
-            const selOrcLead = document.getElementById('orc-lead-direto');
-            selOrcLead.innerHTML = '<option value="">Selecione...</option>';
-
-            [...listaLeads]
-                .sort((a, b) => (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || ""))
-                .forEach(l => { 
-                    const opt = `<option value="${l.id}">${l.nome_cliente_cache}</option>`;
-                    selOrcLead.innerHTML += opt;
-                });
-
-            if(leadAtual) { const updated = listaLeads.find(l => l.id === leadAtual.id); if(updated) { leadAtual = updated; renderArquivos(); renderTimeline(); } }
-        });
-
-        onSnapshot(query(collection(db, "apontamentos"), orderBy("updated_at", "desc")), (snap) => {
-            listaOrcamentos = snap.docs.map(d => ({...d.data(), id: d.id}));
-            renderTableOrcamentos();
-            renderFunnel(); 
-        });
-
-        window.addEventListener('paste', async (e) => {
-            if (!leadAtual || document.getElementById('view-leads').style.display === 'none') return;
-            
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf("image") !== -1) {
-                    const blob = items[i].getAsFile();
-                    const file = new File([blob], `print_${new Date().getTime()}.png`, { type: blob.type });
-                    console.log("Imagem detectada no colar, iniciando upload...");
-                    handleFileUpload([file]);
-                }
-            }
-        });
-
-        window.togglePrazoRequirement = (status) => {
-            const inputPrazo = document.getElementById('apt-prazo-direto');
-            const lblPrazo = document.getElementById('lbl-prazo-direto');
-            if(status === 'Programado' || status === 'Solicitado Alteração') {
-                inputPrazo.required = true;
-                lblPrazo.innerText = "Prazo Final *";
-            } else {
-                inputPrazo.required = false;
-                lblPrazo.innerText = "Prazo Final";
-            }
-        };
-
-        window.populateHistSelectDireto = (leadId) => {
-            const sel = document.getElementById('apt-hist-ref-direto');
-            sel.innerHTML = '<option value="">Selecione...</option>';
-            const lead = listaLeads.find(l => l.id === leadId);
-            if(lead && lead.historico) {
-                lead.historico.forEach((h, idx) => {
-                    if (h.etapa === 'orcamento') {
-                        sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`;
-                    }
-                });
-            }
-            const orc = listaOrcamentos.find(o => o.lead_id === leadId);
-            if(orc) {
-                document.getElementById('apt-orc-id-direto').value = orc.id;
-                document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
-            } else {
-                document.getElementById('apt-orc-id-direto').value = "";
-                document.getElementById('apt-id-externo-direto').value = "";
-            }
-        };
-
-        window.checkRegistroDireto = (tipo) => {
-            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
-            if(indexEditing === -1) return; // Não permite registro auto em novo
-            
-            const campoData = document.getElementById('apt-' + tipo + '-direto').value;
-            const campoReg = document.getElementById('apt-reg-' + tipo + '-direto');
-            if(campoData && !campoReg.value) {
-                campoReg.value = new Date().toLocaleString('pt-BR');
-            }
-        };
-
-        document.getElementById('form-apontamento-direto').onsubmit = async (e) => {
-            e.preventDefault();
-            const orcId = document.getElementById('apt-orc-id-direto').value;
-            const leadId = document.getElementById('orc-lead-direto').value;
-            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
-            
-            const statusVal = document.getElementById('apt-status-direto').value;
-            const inicioVal = document.getElementById('apt-inicio-direto').value;
-            const regInicioVal = document.getElementById('apt-reg-inicio-direto').value;
-            const fimVal = document.getElementById('apt-fim-direto').value;
-            const regFimVal = document.getElementById('apt-reg-fim-direto').value;
-            const prazoVal = document.getElementById('apt-prazo-direto').value;
-            const atendenteVal = document.getElementById('apt-atendente-direto').value;
-
-            // REGRA: Novo apontamento deve estar com campos de tempo vazios
-            if (indexEditing === -1) {
-                if (inicioVal || regInicioVal || fimVal || regFimVal) {
-                    alert("Para um NOVO Apontamento, os campos de Dia/Hora Início/Fim e seus Registros devem estar vazios. Registre o tempo apenas na alteração de um registro já gravado.");
-                    return;
-                }
-            }
-
-            const statusPermitidosSemTrava = ['Programado', 'Solicitado Alteração', 'Apresentação'];
-            if (!statusPermitidosSemTrava.includes(statusVal)) {
-                let aberto = false;
-                listaOrcamentos.forEach(orc => {
-                    if (orc.historico_trabalhos) {
-                        orc.historico_trabalhos.forEach((h, idx) => {
-                            // Se for edição do mesmo item, ignora
-                            if (orcId === orc.id && indexEditing === idx) return;
-                            // Se o atendente tiver algo iniciado e não finalizado
-                            if (h.atendente === atendenteVal && h.inicio && !h.fim) {
-                                aberto = true;
-                            }
-                        });
-                    }
-                });
-                if (aberto) {
-                    alert(`O atendente ${atendenteVal} já possui um apontamento iniciado e não finalizado. Favor concluir o trabalho anterior antes de iniciar um novo.`);
-                    return;
-                }
-            }
-
-            if ((statusVal === 'Programado' || statusVal === 'Solicitado Alteração') && !prazoVal) {
-                alert("O campo 'Prazo Final' é obrigatório para o status selecionado.");
-                return;
-            }
-
-            const item = {
-                atendente: atendenteVal,
-                hist_num: document.getElementById('apt-hist-ref-direto').value,
-                id_externo: document.getElementById('apt-id-externo-direto').value,
-                inicio: inicioVal,
-                reg_inicio: regInicioVal || (inicioVal ? new Date().toLocaleString('pt-BR') : ""),
-                fim: fimVal,
-                reg_fim: regFimVal || (fimVal ? new Date().toLocaleString('pt-BR') : ""),
-                prazo: prazoVal,
-                status: statusVal,
-                obs: document.getElementById('apt-obs-direto').value,
-                timestamp: new Date().toISOString()
-            };
-
-            let historico = [];
-            if (orcId) {
-                const orcExistente = listaOrcamentos.find(o => o.id === orcId);
-                historico = [...(orcExistente.historico_trabalhos || [])];
-                if (indexEditing >= 0) historico[indexEditing] = item;
-                else historico.push(item);
-
-                await updateDoc(doc(db, "apontamentos", orcId), {
-                    historico_trabalhos: historico,
-                    status: item.status,
-                    atendente: item.atendente,
-                    id_externo: item.id_externo,
-                    data_prazo: item.prazo,
-                    updated_at: serverTimestamp()
-                });
-            } else {
-                historico.push(item);
-                await addDoc(collection(db, "apontamentos"), {
-                    lead_id: leadId,
-                    atendente: item.atendente,
-                    id_externo: item.id_externo,
-                    status: item.status,
-                    data_prazo: item.prazo,
-                    historico_trabalhos: historico,
-                    updated_at: serverTimestamp()
-                });
-            }
-
-            alert("Apontamento gravado com sucesso!");
-            limparFormApontamentoDireto();
-        };
-
         window.renderTableOrcamentos = () => {
             const tb = document.querySelector('#table-orcamentos tbody');
+            if(!tb || !currentPerms) return;
             const fAtend = document.getElementById('f-orc-atend').value;
             const fLead = document.getElementById('f-orc-lead').value.toLowerCase();
             const fStatus = document.getElementById('f-orc-status').value;
@@ -960,7 +1115,7 @@
                         refLeadHtml += `<div style="padding:10px; border-bottom:1px solid #eee; height:45px; display:flex; align-items:center;">Histórico #${h.hist_num}</div>`;
                         
                         histHtml += `
-                            <div class="hist-mini-card" onclick="editarItemDoHistoricoList('${orc.id}', ${originalIdx})" style="margin-top:2px; height:45px; margin-right: 0;">
+                            <div class="hist-mini-card" onclick="if(${currentPerms.orcamentos.gravar}) editarItemDoHistoricoList('${orc.id}', ${originalIdx})" style="margin-top:2px; height:45px; margin-right: 0; ${currentPerms.orcamentos.gravar?'':'cursor:default'}">
                                 <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
                                     <strong>${h.atendente}</strong> <span class="stage-tag">${h.status}</span> | 
                                     <small>Início: ${formatBR(h.inicio)} | Fim: ${formatBR(h.fim)}</small>
@@ -968,11 +1123,13 @@
                                 </div>
                             </div>`;
 
+                        const btnDup = currentPerms.orcamentos.gravar ? `<button class="btn-icon" title="Duplicar" onclick="event.stopPropagation(); duplicarItemHist('${orc.id}', ${originalIdx})">➕</button>` : '';
+                        const btnEdit = currentPerms.orcamentos.gravar ? `<button class="btn-icon" title="Editar este registro" onclick="event.stopPropagation(); editarItemDoHistoricoList('${orc.id}', ${originalIdx})">⏱️</button>` : '';
+                        const btnDel = currentPerms.orcamentos.excluir ? `<button class="btn-icon" style="color:red" title="Excluir este registro" onclick="event.stopPropagation(); excluirItemHist('${orc.id}', ${originalIdx})">🗑️</button>` : '';
+
                         actionsColumnHtml += `
                             <div style="height:45px; display:flex; align-items:center; justify-content:center; gap:5px; margin-top:2px; border-bottom:1px solid #eee; padding: 0 10px;">
-                                <button class="btn-icon" title="Duplicar" onclick="event.stopPropagation(); duplicarItemHist('${orc.id}', ${originalIdx})">➕</button>
-                                <button class="btn-icon" title="Editar este registro" onclick="event.stopPropagation(); editarItemDoHistoricoList('${orc.id}', ${originalIdx})">⏱️</button>
-                                <button class="btn-icon" style="color:red" title="Excluir este registro" onclick="event.stopPropagation(); excluirItemHist('${orc.id}', ${originalIdx})">🗑️</button>
+                                ${btnDup} ${btnEdit} ${btnDel}
                             </div>`;
                     });
                 }
@@ -980,7 +1137,7 @@
                 if (histHtml !== "") {
                     tb.innerHTML += `
                         <tr>
-                            <td onclick="carregarOrcamentoRaiz('${orc.id}')" style="vertical-align: middle;">
+                            <td onclick="if(${currentPerms.orcamentos.ver}) carregarOrcamentoRaiz('${orc.id}')" style="vertical-align: middle; ${currentPerms.orcamentos.ver?'cursor:pointer':''}">
                                 <b>${lead ? lead.nome_cliente_cache : ''}</b><br>
                                 <small style="color:var(--primary)">${orc.id_externo || 'Sem ID'}</small>
                             </td>
@@ -992,166 +1149,19 @@
             });
         };
 
-        window.excluirItemHist = async (orcId, idx) => {
-            if(!confirm("Deseja excluir este registro de histórico específico?")) return;
-            const orc = listaOrcamentos.find(o => o.id === orcId);
-            let novoHist = [...orc.historico_trabalhos];
-            novoHist.splice(idx, 1);
-            
-            if(novoHist.length === 0) {
-                await deleteDoc(doc(db, "apontamentos", orcId));
-            } else {
-                await updateDoc(doc(db, "apontamentos", orcId), {
-                    historico_trabalhos: novoHist,
-                    updated_at: serverTimestamp()
-                });
+        // Função de controle de colunas do funil
+        window.toggleFunnelCol = (colId) => {
+            const el = document.getElementById('w-' + colId);
+            const isChecked = document.getElementById('f-col-' + colId).checked;
+            if (el) {
+                el.style.display = isChecked ? 'flex' : 'none';
             }
         };
 
-        window.duplicarItemHist = (orcId, idx) => {
-            const orc = listaOrcamentos.find(o => o.id === orcId);
-            const h = orc.historico_trabalhos[idx];
-            
-            document.getElementById('orc-lead-direto').value = orc.lead_id;
-            populateHistSelectDireto(orc.lead_id);
-            
-            document.getElementById('apt-orc-id-direto').value = orc.id;
-            document.getElementById('apt-index-editing-direto').value = "-1";
-            document.getElementById('apt-atendente-direto').value = h.atendente;
-            document.getElementById('apt-hist-ref-direto').value = h.hist_num;
-            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
-            // Ao duplicar, limpa os campos de tempo conforme a nova regra de "Novo"
-            document.getElementById('apt-inicio-direto').value = "";
-            document.getElementById('apt-reg-inicio-direto').value = "";
-            document.getElementById('apt-fim-direto').value = "";
-            document.getElementById('apt-reg-fim-direto').value = "";
-            document.getElementById('apt-prazo-direto').value = h.prazo || "";
-            document.getElementById('apt-status-direto').value = h.status;
-            document.getElementById('apt-obs-direto').value = h.obs || "";
-            togglePrazoRequirement(h.status);
-            
-            document.getElementById('form-apontamento-direto').scrollIntoView();
-        };
-
-        window.carregarOrcamentoRaiz = (id) => {
-             const orc = listaOrcamentos.find(x => x.id === id);
-             document.getElementById('orc-lead-direto').value = orc.lead_id;
-             populateHistSelectDireto(orc.lead_id);
-             document.getElementById('apt-orc-id-direto').value = orc.id;
-             document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
-        };
-
-        window.editarItemDoHistoricoList = (orcId, idx) => {
-            const orc = listaOrcamentos.find(o => o.id === orcId);
-            const h = orc.historico_trabalhos[idx];
-            
-            document.getElementById('orc-lead-direto').value = orc.lead_id;
-            populateHistSelectDireto(orc.lead_id);
-            
-            document.getElementById('apt-orc-id-direto').value = orc.id;
-            document.getElementById('apt-index-editing-direto').value = idx;
-            document.getElementById('apt-atendente-direto').value = h.atendente;
-            document.getElementById('apt-hist-ref-direto').value = h.hist_num;
-            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
-            document.getElementById('apt-inicio-direto').value = h.inicio || "";
-            document.getElementById('apt-reg-inicio-direto').value = h.reg_inicio || "";
-            document.getElementById('apt-fim-direto').value = h.fim || "";
-            document.getElementById('apt-reg-fim-direto').value = h.reg_fim || "";
-            document.getElementById('apt-prazo-direto').value = h.prazo || "";
-            document.getElementById('apt-status-direto').value = h.status;
-            document.getElementById('apt-obs-direto').value = h.obs || "";
-            togglePrazoRequirement(h.status);
-            
-            document.getElementById('form-apontamento-direto').scrollIntoView();
-        };
-
-        window.limparFormApontamentoDireto = () => {
-            document.getElementById('form-apontamento-direto').reset();
-            document.getElementById('apt-orc-id-direto').value = "";
-            document.getElementById('apt-index-editing-direto').value = "-1";
-            document.getElementById('apt-reg-inicio-direto').value = "";
-            document.getElementById('apt-reg-fim-direto').value = "";
-            togglePrazoRequirement('Programado');
-        };
-
-        window.abrirApontamento = (id, histNum = null) => {
-            const orc = listaOrcamentos.find(x => x.id === id);
-            if(!orc) return;
-            const lead = listaLeads.find(l => l.id === orc.lead_id);
-            document.getElementById('modal-info-lead').innerText = `Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
-            const div = document.getElementById('lista-historico-apontamentos');
-            div.innerHTML = '';
-            
-            const histRefStr = histNum ? histNum.toString() : null;
-            const lista = [...(orc.historico_trabalhos || [])].reverse();
-            
-            lista.forEach(h => {
-                if(histRefStr && h.hist_num !== histRefStr) return;
-                
-                div.innerHTML += `
-                    <div class="hist-list-item">
-                        <strong>${h.atendente}</strong> <span class="stage-tag">${h.status}</span><br>
-                        Início: ${formatBR(h.inicio)} <small>(Reg: ${h.reg_inicio})</small><br>
-                        Fim: ${formatBR(h.fim)} <small>(Reg: ${h.reg_fim})</small><br>
-                        ${h.prazo ? '🏁 <b>Prazo Final: ' + formatBR(h.prazo) + '</b><br>' : ''}
-                        <em>${h.obs || ''}</em>
-                    </div>`;
-            });
-            document.getElementById('dialog-apontamento').showModal();
-        };
-
-        window.handleFileUpload = async (files) => {
-            if(!leadAtual) return alert("Salve os dados básicos antes de enviar arquivos.");
-            const file = files[0]; if(!file) return;
-            const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`;
-            const storageRef = ref(storage, path);
-            try {
-                const snapshot = await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(snapshot.ref);
-                const arquivos = leadAtual.arquivos || [];
-                arquivos.push({ name: file.name, url: url, path: path });
-                await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos });
-                console.log("Arquivo carregado com sucesso!");
-            } catch (err) { console.error(err); alert("Erro ao enviar arquivo."); }
-            document.getElementById('lead-file-input').value = "";
-        };
-
-        window.renderArquivos = () => {
-            const list = document.getElementById('lead-files-list'); list.innerHTML = "";
-            if(!leadAtual || !leadAtual.arquivos) return;
-            leadAtual.arquivos.forEach((file, idx) => {
-                list.innerHTML += `<div class="file-item"><a href="${file.url}" target="_blank" class="file-name">${file.name}</a><button class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red">🗑️</button></div>`;
-            });
-        };
-
-        window.excluirArquivo = async (idx) => {
-            if(!confirm("Excluir este arquivo permanentemente?")) return;
-            const file = leadAtual.arquivos[idx]; const storageRef = ref(storage, file.path);
-            try { await deleteObject(storageRef); const arquivos = [...leadAtual.arquivos]; arquivos.splice(idx, 1); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } 
-            catch (err) { console.error(err); alert("Erro ao excluir arquivo."); }
-        };
-
-        window.handleHistContato = (val) => {
-            const areaOutra = document.getElementById('area-contato-outra');
-            areaOutra.style.display = (val === 'Outra') ? 'block' : 'none';
-            let targetId = "";
-            if(val === 'Proprietário') targetId = leadAtual.cliente_id;
-            else if(val === 'Arquiteto') targetId = leadAtual.arquiteto_id;
-            else if(val === 'Responsável Obra') targetId = leadAtual.responsavel_id;
-            else if(val === 'Adm Obra') targetId = leadAtual.adm_obra_id;
-            else if(val === 'Construtora') targetId = leadAtual.construtora_id;
-            if(val !== 'Outra') updateHistContactDisplay(targetId);
-        };
-
-        window.updateHistContactDisplay = (id) => {
-            const span = document.getElementById('info-hist-contato');
-            const item = listaClientes.find(c => c.id === id);
-            span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Contato não vinculado.";
-        };
-
         window.renderFunnel = () => {
+            if(!currentPerms || !currentPerms.funil_dash.ver) return;
             const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', negociacao:'list-negociacao', fechado:'list-fechado', perdido:'list-perdido'};
-            Object.values(cols).forEach(id => document.getElementById(id).innerHTML = '');
+            Object.values(cols).forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = ''; });
             const atend = document.getElementById('f-funil-atend').value;
             const dtIni = document.getElementById('f-funil-ini').value, dtFim = document.getElementById('f-funil-fim').value, fReal = document.getElementById('f-funil-real').value;
             const showAll = document.getElementById('f-funil-all').checked;
@@ -1177,20 +1187,16 @@
 
                     const div = document.getElementById(cols[h.etapa]);
                     if(div) {
-                        div.innerHTML += `<div class="card ${cor}" onclick="editarLead('${lead.id}')"><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}</div></div>`;
+                        div.innerHTML += `<div class="card ${cor}" onclick="if(${currentPerms.leads.ver}) editarLead('${lead.id}')"><span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><span class="card-title">${lead.nome_cliente_cache}</span><div class="card-dates"><b>Tipo:</b> ${h.contato_tipo || 'N/A'}<br><b>Desde:</b> ${desde}<br><b>Prog:</b> ${formatBR(h.data_programada)}<br><b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}</div></div>`;
                     }
                 });
             });
-            Object.keys(cols).forEach(key => { const count = document.getElementById(cols[key]).children.length; const badge = document.getElementById('c-' + key); if(badge) badge.innerText = count; });
-        };
-
-        window.toggleLeadSort = () => {
-            leadSortAsc = !leadSortAsc;
-            renderTableLeads();
+            Object.keys(cols).forEach(key => { const count = document.getElementById(cols[key])?.children.length || 0; const badge = document.getElementById('c-' + key); if(badge) badge.innerText = count; });
         };
 
         window.renderTableLeads = () => {
             const tb = document.querySelector('#table-leads tbody'); 
+            if(!tb || !currentPerms) return;
             tb.innerHTML = '';
             
             const fCli = document.getElementById('f-leads-cliente').value.toLowerCase();
@@ -1220,27 +1226,229 @@
                     ? `<a href="https://wa.me/55${tel}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; text-decoration:none; font-size:1.1em;">🟢</a>` 
                     : `<span style="display:inline-block; width:30px; height:30px;"></span>`;
                 
-                tb.innerHTML += `<tr onclick="editarLead('${l.id}')">
+                const btnEdit = currentPerms.leads.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button>` : '';
+                const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button>` : '';
+
+                tb.innerHTML += `<tr onclick="if(${currentPerms.leads.ver}) editarLead('${l.id}')">
                     <td>${desde}</td>
                     <td>${l.nome_cliente_cache}</td>
                     <td style="text-transform:capitalize">${etapa}</td>
                     <td>
                         <div class="actions-cell">
-                            ${btnWhats}
-                            <button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button>
-                            <button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button>
+                            ${btnWhats} ${btnEdit} ${btnDel}
                         </div>
                     </td>
                 </tr>`;
             });
         };
 
+        // ========== RESTO DAS FUNÇÕES GLOBAIS ==========
+        window.addEventListener('paste', async (e) => {
+            if (!leadAtual || document.getElementById('view-leads').style.display === 'none') return;
+            if (!currentPerms.leads.gravar) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    const blob = items[i].getAsFile();
+                    const file = new File([blob], `print_${new Date().getTime()}.png`, { type: blob.type });
+                    console.log("Imagem detectada no colar, iniciando upload...");
+                    handleFileUpload([file]);
+                }
+            }
+        });
+
+        window.togglePrazoRequirement = (status) => {
+            const inputPrazo = document.getElementById('apt-prazo-direto');
+            const lblPrazo = document.getElementById('lbl-prazo-direto');
+            if(status === 'Programado' || status === 'Solicitado Alteração') {
+                inputPrazo.required = true; lblPrazo.innerText = "Prazo Final *";
+            } else {
+                inputPrazo.required = false; lblPrazo.innerText = "Prazo Final";
+            }
+        };
+
+        window.populateHistSelectDireto = (leadId) => {
+            const sel = document.getElementById('apt-hist-ref-direto');
+            sel.innerHTML = '<option value="">Selecione...</option>';
+            const lead = listaLeads.find(l => l.id === leadId);
+            if(lead && lead.historico) {
+                lead.historico.forEach((h, idx) => {
+                    if (h.etapa === 'orcamento') sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`;
+                });
+            }
+            const orc = listaOrcamentos.find(o => o.lead_id === leadId);
+            if(orc) {
+                document.getElementById('apt-orc-id-direto').value = orc.id;
+                document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
+            } else {
+                document.getElementById('apt-orc-id-direto').value = "";
+                document.getElementById('apt-id-externo-direto').value = "";
+            }
+        };
+
+        window.checkRegistroDireto = (tipo) => {
+            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
+            if(indexEditing === -1) return; 
+            const campoData = document.getElementById('apt-' + tipo + '-direto').value;
+            const campoReg = document.getElementById('apt-reg-' + tipo + '-direto');
+            if(campoData && !campoReg.value) campoReg.value = new Date().toLocaleString('pt-BR');
+        };
+
+        document.getElementById('form-apontamento-direto').onsubmit = async (e) => {
+            e.preventDefault();
+            if(!currentPerms.orcamentos.gravar) return;
+            const orcId = document.getElementById('apt-orc-id-direto').value;
+            const leadId = document.getElementById('orc-lead-direto').value;
+            const indexEditing = parseInt(document.getElementById('apt-index-editing-direto').value);
+            
+            const statusVal = document.getElementById('apt-status-direto').value;
+            const inicioVal = document.getElementById('apt-inicio-direto').value;
+            const regInicioVal = document.getElementById('apt-reg-inicio-direto').value;
+            const fimVal = document.getElementById('apt-fim-direto').value;
+            const regFimVal = document.getElementById('apt-reg-fim-direto').value;
+            const prazoVal = document.getElementById('apt-prazo-direto').value;
+            const atendenteVal = document.getElementById('apt-atendente-direto').value;
+
+            if (indexEditing === -1) {
+                if (inicioVal || regInicioVal || fimVal || regFimVal) {
+                    alert("Para um NOVO Apontamento, os campos de Dia/Hora Início/Fim e seus Registros devem estar vazios. Registre o tempo apenas na alteração de um registro já gravado.");
+                    return;
+                }
+            }
+
+            const statusPermitidosSemTrava = ['Programado', 'Solicitado Alteração', 'Apresentação'];
+            if (!statusPermitidosSemTrava.includes(statusVal)) {
+                let aberto = false;
+                listaOrcamentos.forEach(orc => {
+                    if (orc.historico_trabalhos) {
+                        orc.historico_trabalhos.forEach((h, idx) => {
+                            if (orcId === orc.id && indexEditing === idx) return;
+                            if (h.atendente === atendenteVal && h.inicio && !h.fim) aberto = true;
+                        });
+                    }
+                });
+                if (aberto) { alert(`O atendente ${atendenteVal} já possui um apontamento iniciado e não finalizado.`); return; }
+            }
+
+            if ((statusVal === 'Programado' || statusVal === 'Solicitado Alteração') && !prazoVal) {
+                alert("O campo 'Prazo Final' é obrigatório para o status selecionado."); return;
+            }
+
+            const item = { atendente: atendenteVal, hist_num: document.getElementById('apt-hist-ref-direto').value, id_externo: document.getElementById('apt-id-externo-direto').value, inicio: inicioVal, reg_inicio: regInicioVal || (inicioVal ? new Date().toLocaleString('pt-BR') : ""), fim: fimVal, reg_fim: regFimVal || (fimVal ? new Date().toLocaleString('pt-BR') : ""), prazo: prazoVal, status: statusVal, obs: document.getElementById('apt-obs-direto').value, timestamp: new Date().toISOString() };
+
+            let historico = [];
+            if (orcId) {
+                const orcExistente = listaOrcamentos.find(o => o.id === orcId);
+                historico = [...(orcExistente.historico_trabalhos || [])];
+                if (indexEditing >= 0) historico[indexEditing] = item;
+                else historico.push(item);
+                await updateDoc(doc(db, "apontamentos", orcId), { historico_trabalhos: historico, status: item.status, atendente: item.atendente, id_externo: item.id_externo, data_prazo: item.prazo, updated_at: serverTimestamp() });
+            } else {
+                historico.push(item);
+                await addDoc(collection(db, "apontamentos"), { lead_id: leadId, atendente: item.atendente, id_externo: item.id_externo, status: item.status, data_prazo: item.prazo, historico_trabalhos: historico, updated_at: serverTimestamp() });
+            }
+            alert("Apontamento gravado com sucesso!"); limparFormApontamentoDireto();
+        };
+
+        window.excluirItemHist = async (orcId, idx) => {
+            if(!currentPerms.orcamentos.excluir) return;
+            if(!confirm("Deseja excluir este registro de histórico específico?")) return;
+            const orc = listaOrcamentos.find(o => o.id === orcId); let novoHist = [...orc.historico_trabalhos]; novoHist.splice(idx, 1);
+            if(novoHist.length === 0) await deleteDoc(doc(db, "apontamentos", orcId));
+            else await updateDoc(doc(db, "apontamentos", orcId), { historico_trabalhos: novoHist, updated_at: serverTimestamp() });
+        };
+
+        window.duplicarItemHist = (orcId, idx) => {
+            if(!currentPerms.orcamentos.gravar) return;
+            const orc = listaOrcamentos.find(o => o.id === orcId); const h = orc.historico_trabalhos[idx];
+            document.getElementById('orc-lead-direto').value = orc.lead_id; populateHistSelectDireto(orc.lead_id);
+            document.getElementById('apt-orc-id-direto').value = orc.id; document.getElementById('apt-index-editing-direto').value = "-1";
+            document.getElementById('apt-atendente-direto').value = h.atendente; document.getElementById('apt-hist-ref-direto').value = h.hist_num;
+            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
+            document.getElementById('apt-inicio-direto').value = ""; document.getElementById('apt-reg-inicio-direto').value = "";
+            document.getElementById('apt-fim-direto').value = ""; document.getElementById('apt-reg-fim-direto').value = "";
+            document.getElementById('apt-prazo-direto').value = h.prazo || ""; document.getElementById('apt-status-direto').value = h.status;
+            document.getElementById('apt-obs-direto').value = h.obs || ""; togglePrazoRequirement(h.status);
+            document.getElementById('form-apontamento-direto').scrollIntoView();
+        };
+
+        window.carregarOrcamentoRaiz = (id) => {
+             const orc = listaOrcamentos.find(x => x.id === id);
+             document.getElementById('orc-lead-direto').value = orc.lead_id; populateHistSelectDireto(orc.lead_id);
+             document.getElementById('apt-orc-id-direto').value = orc.id; document.getElementById('apt-id-externo-direto').value = orc.id_externo || "";
+        };
+
+        window.editarItemDoHistoricoList = (orcId, idx) => {
+            if(!currentPerms.orcamentos.gravar) return;
+            const orc = listaOrcamentos.find(o => o.id === orcId); const h = orc.historico_trabalhos[idx];
+            document.getElementById('orc-lead-direto').value = orc.lead_id; populateHistSelectDireto(orc.lead_id);
+            document.getElementById('apt-orc-id-direto').value = orc.id; document.getElementById('apt-index-editing-direto').value = idx;
+            document.getElementById('apt-atendente-direto').value = h.atendente; document.getElementById('apt-hist-ref-direto').value = h.hist_num;
+            document.getElementById('apt-id-externo-direto').value = h.id_externo || orc.id_externo || "";
+            document.getElementById('apt-inicio-direto').value = h.inicio || ""; document.getElementById('apt-reg-inicio-direto').value = h.reg_inicio || "";
+            document.getElementById('apt-fim-direto').value = h.fim || ""; document.getElementById('apt-reg-fim-direto').value = h.reg_fim || "";
+            document.getElementById('apt-prazo-direto').value = h.prazo || ""; document.getElementById('apt-status-direto').value = h.status;
+            document.getElementById('apt-obs-direto').value = h.obs || ""; togglePrazoRequirement(h.status);
+            document.getElementById('form-apontamento-direto').scrollIntoView();
+        };
+
+        window.limparFormApontamentoDireto = () => {
+            document.getElementById('form-apontamento-direto').reset(); document.getElementById('apt-orc-id-direto').value = "";
+            document.getElementById('apt-index-editing-direto').value = "-1"; document.getElementById('apt-reg-inicio-direto').value = "";
+            document.getElementById('apt-reg-fim-direto').value = ""; togglePrazoRequirement('Programado');
+        };
+
+        window.abrirApontamento = (id, histNum = null) => {
+            const orc = listaOrcamentos.find(x => x.id === id); if(!orc) return;
+            const lead = listaLeads.find(l => l.id === orc.lead_id);
+            document.getElementById('modal-info-lead').innerText = `Cliente: ${lead ? lead.nome_cliente_cache : '?'}`;
+            const div = document.getElementById('lista-historico-apontamentos'); div.innerHTML = '';
+            const histRefStr = histNum ? histNum.toString() : null; const lista = [...(orc.historico_trabalhos || [])].reverse();
+            lista.forEach(h => {
+                if(histRefStr && h.hist_num !== histRefStr) return;
+                div.innerHTML += `<div class="hist-list-item"><strong>${h.atendente}</strong> <span class="stage-tag">${h.status}</span><br>Início: ${formatBR(h.inicio)} <small>(Reg: ${h.reg_inicio})</small><br>Fim: ${formatBR(h.fim)} <small>(Reg: ${h.reg_fim})</small><br>${h.prazo ? '🏁 <b>Prazo Final: ' + formatBR(h.prazo) + '</b><br>' : ''}<em>${h.obs || ''}</em></div>`;
+            });
+            document.getElementById('dialog-apontamento').showModal();
+        };
+
+        window.handleFileUpload = async (files) => {
+            if(!leadAtual) return alert("Salve os dados básicos antes de enviar arquivos.");
+            const file = files[0]; if(!file) return;
+            const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`; const storageRef = ref(storage, path);
+            try { const snapshot = await uploadBytes(storageRef, file); const url = await getDownloadURL(snapshot.ref); const arquivos = leadAtual.arquivos || []; arquivos.push({ name: file.name, url: url, path: path }); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); console.log("Arquivo carregado com sucesso!"); } catch (err) { console.error(err); alert("Erro ao enviar arquivo."); } document.getElementById('lead-file-input').value = "";
+        };
+
+        window.renderArquivos = () => {
+            const list = document.getElementById('lead-files-list'); list.innerHTML = "";
+            if(!leadAtual || !leadAtual.arquivos) return;
+            leadAtual.arquivos.forEach((file, idx) => {
+                const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red">🗑️</button>` : '';
+                list.innerHTML += `<div class="file-item"><a href="${file.url}" target="_blank" class="file-name">${file.name}</a>${btnDel}</div>`;
+            });
+        };
+
+        window.excluirArquivo = async (idx) => {
+            if(!currentPerms.leads.excluir) return;
+            if(!confirm("Excluir este arquivo permanentemente?")) return;
+            const file = leadAtual.arquivos[idx]; const storageRef = ref(storage, file.path);
+            try { await deleteObject(storageRef); const arquivos = [...leadAtual.arquivos]; arquivos.splice(idx, 1); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } catch (err) { console.error(err); alert("Erro ao excluir arquivo."); }
+        };
+
+        window.handleHistContato = (val) => {
+            const areaOutra = document.getElementById('area-contato-outra'); areaOutra.style.display = (val === 'Outra') ? 'block' : 'none'; let targetId = "";
+            if(val === 'Proprietário') targetId = leadAtual.cliente_id; else if(val === 'Arquiteto') targetId = leadAtual.arquiteto_id; else if(val === 'Responsável Obra') targetId = leadAtual.responsavel_id; else if(val === 'Adm Obra') targetId = leadAtual.adm_obra_id; else if(val === 'Construtora') targetId = leadAtual.construtora_id;
+            if(val !== 'Outra') updateHistContactDisplay(targetId);
+        };
+
+        window.updateHistContactDisplay = (id) => { const span = document.getElementById('info-hist-contato'); const item = listaClientes.find(c => c.id === id); span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Contato não vinculado."; };
+
+        window.toggleLeadSort = () => { leadSortAsc = !leadSortAsc; renderTableLeads(); };
+
         window.processarDashboard = () => {
-            const iniStr = document.getElementById('dash-inicio').value; const fimStr = document.getElementById('dash-fim').value;
-            if(!iniStr || !fimStr) return;
+            if(!currentPerms || !currentPerms.funil_dash.ver_dash) return;
+            const iniStr = document.getElementById('dash-inicio').value; const fimStr = document.getElementById('dash-fim').value; if(!iniStr || !fimStr) return;
             const ini = new Date(iniStr + "T00:00:00"), fim = new Date(fimStr + "T23:59:59"), atendente = document.getElementById('dash-atendente').value;
-            const origemCount = {}, leadsDiaCount = {}, stageDurations = {}, cycleTimes = {contatado:[], orcamento:[], negociacao:[], fechado:[]};
-            let countPrazo=0, countAtraso=0, filteredData=[], totalDelayHours = 0;
+            const origemCount = {}, leadsDiaCount = {}, stageDurations = {}, cycleTimes = {contatado:[], orcamento:[], negociacao:[], fechado:[]}; let countPrazo=0, countAtraso=0, filteredData=[], totalDelayHours = 0;
 
             listaLeads.forEach(l => {
                 const dtCriacao = l.created_at ? l.created_at.toDate() : null;
@@ -1270,8 +1478,7 @@
             if(countAtraso > 0) { const avgDelay = totalDelayHours / countAtraso; const d = Math.floor(avgDelay/24), h = Math.floor(avgDelay % 24); badge.innerText = `⏳ Atraso Médio: ${d}d ${h}h`; badge.style.display = 'block'; } else badge.style.display = 'none';
             const stageMeans = Object.keys(stageDurations).map(k => ({etapa: k, media: (stageDurations[k].reduce((a,b)=>a+b,0) / stageDurations[k].length).toFixed(1)}));
             const cycleMeans = Object.keys(cycleTimes).map(k => cycleTimes[k].length ? (cycleTimes[k].reduce((a,b)=>a+b,0) / cycleTimes[k].length).toFixed(1) : 0);
-            drawCharts(origemCount, leadsDiaCount, countPrazo, countAtraso, stageMeans, cycleMeans);
-            renderDashTable(filteredData);
+            drawCharts(origemCount, leadsDiaCount, countPrazo, countAtraso, stageMeans, cycleMeans); renderDashTable(filteredData);
         };
 
         function drawCharts(origem, leadsDia, prazo, atraso, stageMeans, cycleMeans) {
@@ -1282,10 +1489,11 @@
             if(chartCycleTime) chartCycleTime.destroy(); chartCycleTime = new Chart(document.getElementById('chartCycleTime'), { type: 'line', data: { labels: ['Contato', 'Orçamento', 'Negociação', 'Fechado'], datasets: [{ label: 'Dias desde a criação', data: cycleMeans, borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] }, options: { maintainAspectRatio: false } });
         }
 
-        function renderDashTable(data) { const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = ''; document.getElementById('dash-count').innerText = `(${data.length} registros)`; data.forEach(r => tb.innerHTML += `<tr onclick="editarLead('${r.id}')"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.cli}</td><td>${r.st}</td></tr>`); }
+        function renderDashTable(data) { const tb = document.querySelector('#dash-table tbody'); tb.innerHTML = ''; document.getElementById('dash-count').innerText = `(${data.length} registros)`; data.forEach(r => tb.innerHTML += `<tr onclick="if(${currentPerms.leads.ver}) editarLead('${r.id}')"><td>${r.dt}</td><td>${r.etapa}</td><td>${r.cli}</td><td>${r.st}</td></tr>`); }
 
         document.getElementById('form-historico').onsubmit = async(e) => {
-            e.preventDefault(); const idx = document.getElementById('hist-index').value;
+            e.preventDefault(); if(!currentPerms.leads.gravar) return;
+            const idx = document.getElementById('hist-index').value;
             const h = { atendente: document.getElementById('hist-atendente').value, contato_tipo: document.getElementById('hist-contato-tipo').value, contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "", etapa: document.getElementById('hist-etapa').value, data_programada: document.getElementById('hist-prog').value, data_realizada: document.getElementById('hist-real').value, resultado: document.getElementById('hist-resultado').value, resumo: document.getElementById('hist-resumo').value, temperatura: document.getElementById('hist-temp').value, data_operacao: new Date().toLocaleString('pt-BR') };
             if (h.etapa !== 'novo' && !h.temperatura) { alert("A classificação por estrelas é obrigatória."); return; }
             if (h.data_realizada && !h.resultado) { alert("O Resultado é obrigatório."); return; }
@@ -1297,32 +1505,33 @@
         };
 
         window.editHist = (i) => {
+            if(!currentPerms.leads.gravar) return;
             const h = leadAtual.historico[i]; document.getElementById('hist-index').value = i; document.getElementById('hist-atendente').value = h.atendente; document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo);
             if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || ""; document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || ""; document.getElementById('hist-prog').value = h.data_programada || ''; document.getElementById('hist-real').value = h.data_realizada || ''; document.getElementById('hist-resultado').value = h.resultado || ''; document.getElementById('hist-resumo').value = h.resumo; document.getElementById('hist-upd-real').value = h.updated_realizada_at || '-'; document.getElementById('btn-save-hist').innerText = "Atualizar Interação";
         };
 
-        window.novoHistBaseado = (i) => { const h = leadAtual.historico[i]; limparFormHist(); document.getElementById('hist-atendente').value = h.atendente; document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo); document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || ""; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('form-historico').scrollIntoView(); };
+        window.novoHistBaseado = (i) => { if(!currentPerms.leads.gravar) return; const h = leadAtual.historico[i]; limparFormHist(); document.getElementById('hist-atendente').value = h.atendente; document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; handleHistContato(h.contato_tipo); document.getElementById('hist-etapa').value = h.etapa; document.getElementById('hist-temp').value = h.temperatura || ""; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('form-historico').scrollIntoView(); };
         window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
         window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
         window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
         window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
-        window.excluirLead = async(id) => { if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
-        window.novoLeadDireto = () => { window.switchView('leads'); window.limparFormLead(); };
-        window.excluirCli = async(id) => { if(listaLeads.some(l => l.cliente_id === id)) return alert("Registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
-        window.excluirAtend = async(id) => { const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === name))) return alert("Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
+        window.excluirLead = async(id) => { if(!currentPerms.leads.excluir) return; if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
+        window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
+        window.excluirCli = async(id) => { if(!currentPerms.cadastros.excluir) return; if(listaLeads.some(l => l.cliente_id === id)) return alert("Registro possui leads."); if(confirm("Excluir Registro?")) await deleteDoc(doc(db, "clientes", id)); };
+        window.excluirAtend = async(id) => { if(!currentPerms.cadastros.excluir) return; const nome = listaAtendentes.find(a => a.id === id)?.nome; if(listaLeads.some(l => (l.historico || []).some(h => h.atendente === nome))) return alert("Atendente possui interações."); if(confirm("Excluir Atendente?")) await deleteDoc(doc(db, "atendentes", id)); };
         
         document.getElementById('form-cliente').onsubmit = async(e) => { 
-            e.preventDefault(); const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, cidade:document.getElementById('cli-cidade').value, endereco:document.getElementById('cli-endereco').value }; 
+            e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, cidade:document.getElementById('cli-cidade').value, endereco:document.getElementById('cli-endereco').value }; 
             if(id) await updateDoc(doc(db,"clientes",id),d); else await addDoc(collection(db,"clientes"),d); document.getElementById('form-cliente').reset(); document.getElementById('cli-id').value=''; 
         };
         
-        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
+        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
         
         document.getElementById('form-lead-main').onsubmit = async(e) => { 
-            e.preventDefault(); const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
+            e.preventDefault(); if(!currentPerms.leads.gravar) return; const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
             if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) { alert("O campo Indicação é obrigatório."); return; }
             const d={ cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, origem:origem, indicacao_id: indicacao, pvc_metragem: document.getElementById('lead-pvc-metragem').value, pvc_pecas: document.getElementById('lead-pvc-pecas').value, pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, previsao:document.getElementById('lead-previsao').value, construtora_id: document.getElementById('lead-construtora').value, adm_obra_id: document.getElementById('lead-adm-obra').value, arquiteto_id: document.getElementById('lead-arquiteto').value, responsavel_id: document.getElementById('lead-responsavel').value, updated_at:serverTimestamp() }; 
-            if(id) await updateDoc(doc(db,"leads",id),d); else { d.created_at=serverTimestamp(); d.numero_lead="#L-"+Math.floor(1000+Math.random()*9000); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
+            if(id) await updateDoc(doc(db,"leads",id),d); else { d.created_at=serverTimestamp(); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
             alert('Dados Salvos!'); 
         };
 
@@ -1342,7 +1551,7 @@
         window.renderTimeline = () => { 
             const div = document.getElementById('timeline-list'); div.innerHTML = ''; const hArray = (leadAtual.historico || []).map((h, i) => ({...h, idx: i}));
             hArray.reverse().forEach((h, indexInTimeline) => { 
-                const btnNovo = (indexInTimeline === 0) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado neste">➕</button>` : '';
+                const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado neste">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? contactData.telefone.replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
                 
@@ -1354,23 +1563,139 @@
                         const linkedApts = (orc.historico_trabalhos || []).filter(apt => apt.hist_num === histRefStr);
                         if(linkedApts.length > 0) {
                             const lastApt = linkedApts[linkedApts.length - 1]; 
-                             orcIntegrationHtml = `<div class="orc-integration-box" onclick="abrirApontamento('${orc.id}', ${h.idx + 1})"><b>⏱️ Apontamento:</b> ${lastApt.status} | 👤 ${lastApt.atendente}<br>📅 Início: ${formatBR(lastApt.inicio)} | Fim: ${formatBR(lastApt.fim)}</div>`;
+                             orcIntegrationHtml = `<div class="orc-integration-box" onclick="if(${currentPerms.orcamentos.ver}) abrirApontamento('${orc.id}', ${h.idx + 1})"><b>⏱️ Apontamento:</b> ${lastApt.status} | 👤 ${lastApt.atendente}<br>📅 Início: ${formatBR(lastApt.inicio)} | Fim: ${formatBR(lastApt.fim)}</div>`;
                         }
                     }
                 }
 
+                const btnEdit = currentPerms.leads.gravar ? `<button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>` : '';
+                const btnDel = currentPerms.leads.excluir ? `<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button>` : '';
+
                 div.innerHTML += `<div class="timeline-item">
                     <div class="seq-badge">${h.idx + 1}</div>
-                    <div class="tl-header"><span class="stage-tag">${h.etapa}</span><div><button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>${btnNovo}<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button></div></div>
+                    <div class="tl-header"><span class="stage-tag">${h.etapa}</span><div>${btnEdit}${btnNovo}${btnDel}</div></div>
                     <span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br>
                     <span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 🏁 Status: ${h.resultado || '-'}</span>
-                    <div onclick="editHist(${h.idx})" style="cursor:pointer; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div>
+                    <div onclick="if(${currentPerms.leads.gravar}) editHist(${h.idx})" style="cursor:${currentPerms.leads.gravar?'pointer':'default'}; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div>
                     ${orcIntegrationHtml}
                 </div>`; 
             }); 
         };
 
-        window.delHist = async (i) => { if(!confirm("Excluir esta interação?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); leadAtual.historico = hist; renderTimeline(); };
+        window.delHist = async (i) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir esta interação?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); leadAtual.historico = hist; renderTimeline(); };
+        
+        // ========== FUNÇÕES TELA DE USUÁRIOS ==========
+        window.renderTableUsuarios = () => {
+            const tb = document.querySelector('#table-usuarios tbody');
+            if(!tb) return;
+            tb.innerHTML = '';
+            listaUsuarios.forEach(u => {
+                tb.innerHTML += `<tr onclick="editarUsuarioConfig('${u.uid}')" style="cursor:pointer;">
+                    <td>${u.email}</td>
+                    <td>${u.perfil === 'admin' ? 'admin' : 'user'}</td>
+                    <td style="text-align:center;"><button class="btn-icon" onclick="event.stopPropagation(); editarUsuarioConfig('${u.uid}')">⚙️</button></td>
+                </tr>`;
+            });
+        };
+
+        window.editarUsuarioConfig = (uid) => {
+            const u = listaUsuarios.find(x => x.uid === uid);
+            if(!u) return;
+            document.getElementById('perm-user-uid').value = u.uid;
+            document.getElementById('perm-user-email').value = u.email;
+            document.getElementById('perm-user-perfil').value = u.perfil;
+            
+            const p = u.permissoes || defaultPermissoes;
+            document.getElementById('p-funil-ver').checked = p.funil_dash?.ver || false;
+            document.getElementById('p-dash-ver').checked = p.funil_dash?.ver_dash || false;
+            
+            document.getElementById('p-leads-ver').checked = p.leads?.ver || false;
+            document.getElementById('p-leads-gravar').checked = p.leads?.gravar || false;
+            document.getElementById('p-leads-excluir').checked = p.leads?.excluir || false;
+            
+            document.getElementById('p-orc-ver').checked = p.orcamentos?.ver || false;
+            document.getElementById('p-orc-gravar').checked = p.orcamentos?.gravar || false;
+            document.getElementById('p-orc-excluir').checked = p.orcamentos?.excluir || false;
+            
+            document.getElementById('p-cad-ver').checked = p.cadastros?.ver || false;
+            document.getElementById('p-cad-gravar').checked = p.cadastros?.gravar || false;
+            document.getElementById('p-cad-excluir').checked = p.cadastros?.excluir || false;
+            
+            // Re-aplicar a trava visual do formulário de acordo com o perfil carregado
+            const area = document.getElementById('area-config-perms');
+            if(u.perfil === 'admin') {
+                area.style.opacity = '0.5'; area.style.pointerEvents = 'none';
+            } else {
+                area.style.opacity = '1'; area.style.pointerEvents = 'auto';
+            }
+        };
+
+        document.getElementById('form-permissoes').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const uid = document.getElementById('perm-user-uid').value;
+            if(!uid) return alert("Selecione um usuário na lista primeiro.");
+            
+            const perfil = document.getElementById('perm-user-perfil').value;
+            
+            // Proteção para evitar remover o último administrador do sistema
+            const userTarget = listaUsuarios.find(x => x.uid === uid);
+            if (userTarget && userTarget.perfil === 'admin' && perfil !== 'admin') {
+                const totalAdmins = listaUsuarios.filter(x => x.perfil === 'admin').length;
+                if (totalAdmins <= 1) {
+                    return alert("Não é possível alterar o perfil deste usuário para Padrão! O sistema precisa manter pelo menos 1 (um) Administrador ativo.");
+                }
+            }
+            
+            let p = {
+                funil_dash: { ver: document.getElementById('p-funil-ver').checked, ver_dash: document.getElementById('p-dash-ver').checked },
+                leads: { ver: document.getElementById('p-leads-ver').checked, gravar: document.getElementById('p-leads-gravar').checked, excluir: document.getElementById('p-leads-excluir').checked },
+                orcamentos: { ver: document.getElementById('p-orc-ver').checked, gravar: document.getElementById('p-orc-gravar').checked, excluir: document.getElementById('p-orc-excluir').checked },
+                cadastros: { ver: document.getElementById('p-cad-ver').checked, gravar: document.getElementById('p-cad-gravar').checked, excluir: document.getElementById('p-cad-excluir').checked }
+            };
+
+            if(perfil === 'admin') p = adminPermissoes; // Trava máxima de segurança pro UI se for admin
+
+            await updateDoc(doc(db, "usuarios", uid), { perfil: perfil, permissoes: p, updated_at: serverTimestamp() });
+            alert("Permissões salvas com sucesso!");
+        });
+
+        document.getElementById('perm-user-perfil').addEventListener('change', (e) => {
+            const area = document.getElementById('area-config-perms');
+            if(e.target.value === 'admin') {
+                area.style.opacity = '0.5'; area.style.pointerEvents = 'none'; // Desabilita checkboxes
+                area.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = true);
+            } else {
+                area.style.opacity = '1'; area.style.pointerEvents = 'auto'; // Habilita
+            }
+        });
+
+        window.removerUsuarioFirestore = async () => {
+            const uid = document.getElementById('perm-user-uid').value;
+            if(!uid) return alert("Selecione um usuário na lista primeiro.");
+            
+            // Proteção para evitar apagar o último administrador do sistema
+            const userTarget = listaUsuarios.find(x => x.uid === uid);
+            if (userTarget && userTarget.perfil === 'admin') {
+                const totalAdmins = listaUsuarios.filter(x => x.perfil === 'admin').length;
+                if (totalAdmins <= 1) {
+                    return alert("Não é possível remover este usuário! O sistema precisa manter pelo menos 1 (um) Administrador ativo.");
+                }
+            }
+            
+            if(confirm("Remover o acesso deste usuário?\nIsso apagará suas permissões do Firestore. (Sua conta Firebase Auth ainda existirá, mas sem acesso)")) {
+                await deleteDoc(doc(db, "usuarios", uid));
+                document.getElementById('form-permissoes').reset();
+                document.getElementById('perm-user-uid').value = '';
+                
+                // Se a pessoa excluiu a si mesma, sai do sistema
+                if (currentUser && uid === currentUser.uid) {
+                    logoutApp();
+                } else {
+                    alert("Acesso removido.");
+                }
+            }
+        };
+
         window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); togglePrazoRequirement('Programado'); };
     </script>
 </body>
