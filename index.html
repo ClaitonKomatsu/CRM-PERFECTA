@@ -748,7 +748,6 @@
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         let leadSortAsc = false;
         
-        // AUTH & RBAC (Role-Based Access Control)
         let currentUser = null;
         let currentPerms = null;
         let listenersAtivos = []; 
@@ -767,7 +766,6 @@
             cadastros: { ver: true, gravar: true, excluir: true }
         };
 
-        // HELPER PARA PARSE DE METRAGEM
         const parseM2 = (v) => {
             if (!v) return 0;
             let clean = v.toString().replace(" m2", "").replace(/\./g, "").replace(",", ".");
@@ -824,7 +822,6 @@
             return v;
         };
 
-        // LISTENERS DE INTERFACE
         document.querySelectorAll('input[id$="telefone"], input[id$="whats"]').forEach(el => {
             el.addEventListener('input', (e) => e.target.value = maskPhone(e.target.value));
         });
@@ -835,7 +832,7 @@
             span.innerText = item ? `📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "";
         };
 
-        // ========== AUTHENTICATION & LOGIN LOGIC MANTIDA ==========
+        // ========== AUTHENTICATION ==========
         let loginMode = 'login';
         document.getElementById('toggle-login-mode').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1003,7 +1000,7 @@
 
             if (currentPerms.cadastros.ver || currentPerms.leads.ver) {
                 listenersAtivos.push(onSnapshot(collection(db, "clientes"), (snap) => {
-                    listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => a.nome_empresa.localeCompare(b.nome_empresa));
+                    listaClientes = snap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b) => (a.nome_empresa || "").localeCompare(b.nome_empresa || ""));
                     const selects = ['lead-cliente', 'lead-indicacao', 'lead-construtora', 'lead-adm-obra', 'lead-arquiteto', 'lead-responsavel', 'hist-contato-id'];
                     selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML = '<option value="">Selecione...</option>'; });
                     listaClientes.forEach(c => {
@@ -1047,7 +1044,27 @@
             }
         }
 
-        // ========== RENDERIZAÇÃO DO FUNIL (ATUALIZADO) ==========
+        window.renderTableClientes = () => {
+            const tb = document.querySelector('#table-clientes tbody'); 
+            if(!tb || !currentPerms) return;
+            tb.innerHTML = '';
+            const fNome = document.getElementById('f-cli-nome').value.toLowerCase();
+            const fTipo = document.getElementById('f-cli-tipo').value;
+            const fCidade = document.getElementById('f-cli-cidade').value.toLowerCase();
+            const fWhats = document.getElementById('f-cli-whats').value.toLowerCase();
+            listaClientes.forEach(c => {
+                const matchNome = (c.nome_empresa || "").toLowerCase().includes(fNome);
+                const matchTipo = fTipo === 'todos' || c.tipo === fTipo;
+                const matchCidade = (c.cidade || "").toLowerCase().includes(fCidade);
+                const matchWhats = (c.telefone || "").toLowerCase().includes(fWhats);
+                if (matchNome && matchTipo && matchCidade && matchWhats) {
+                    const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button>` : '';
+                    const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button>` : '';
+                    tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarCli('${c.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${c.nome_empresa}</td><td>${c.tipo||'Cliente'}</td><td>${c.cidade||''}</td><td>${btnEdit} ${btnDel}</td></tr>`;
+                }
+            });
+        };
+
         window.renderFunnel = () => {
             if(!currentPerms || !currentPerms.funil_dash.ver) return;
             const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', enviado:'list-enviado', negociacao:'list-negociacao', fechado:'list-fechado', perdido:'list-perdido'};
@@ -1058,19 +1075,16 @@
             const fStatusOrc = document.getElementById('f-funil-status-orc').value;
             const showAll = document.getElementById('f-funil-all').checked;
 
-            // Filtros de Metragem
             const pvcMin = parseFloat(document.getElementById('f-pvc-min').value) || 0;
             const pvcMax = parseFloat(document.getElementById('f-pvc-max').value) || Infinity;
             const aluMin = parseFloat(document.getElementById('f-alu-min').value) || 0;
             const aluMax = parseFloat(document.getElementById('f-alu-max').value) || Infinity;
 
             listaLeads.forEach(lead => {
-                // Cálculo de metragens para filtro e exibição
                 const mPvc = parseM2(lead.pvc_metragem);
                 const mAlu = parseM2(lead.alu_metragem);
                 const areaTotal = mPvc + mAlu;
 
-                // Aplicar filtros de metragem
                 if (pvcMin > 0 && mPvc < pvcMin) return;
                 if (pvcMax !== Infinity && mPvc > pvcMax) return;
                 if (aluMin > 0 && mAlu < aluMin) return;
@@ -1117,30 +1131,6 @@
             Object.keys(cols).forEach(key => { const count = document.getElementById(cols[key])?.children.length || 0; const badge = document.getElementById('c-' + key); if(badge) badge.innerText = count; });
         };
 
-        // ========== AS DEMAIS FUNÇÕES DO MÓDULO PERMANECEM IDÊNTICAS ==========
-        // [MANTIDO CONTEÚDO ORIGINAL AQUI: renderTableClientes, renderTableOrcamentos, renderTableLeads, processarDashboard, forms, etc.]
-
-        window.renderTableClientes = () => {
-            const tb = document.querySelector('#table-clientes tbody'); 
-            if(!tb || !currentPerms) return;
-            tb.innerHTML = '';
-            const fNome = document.getElementById('f-cli-nome').value.toLowerCase();
-            const fTipo = document.getElementById('f-cli-tipo').value;
-            const fCidade = document.getElementById('f-cli-cidade').value.toLowerCase();
-            const fWhats = document.getElementById('f-cli-whats').value.toLowerCase();
-            listaClientes.forEach(c => {
-                const matchNome = (c.nome_empresa || "").toLowerCase().includes(fNome);
-                const matchTipo = fTipo === 'todos' || c.tipo === fTipo;
-                const matchCidade = (c.cidade || "").toLowerCase().includes(fCidade);
-                const matchWhats = (c.telefone || "").toLowerCase().includes(fWhats);
-                if (matchNome && matchTipo && matchCidade && matchWhats) {
-                    const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarCli('${c.id}')">✏️</button>` : '';
-                    const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirCli('${c.id}')" style="color:red">🗑️</button>` : '';
-                    tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarCli('${c.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${c.nome_empresa}</td><td>${c.tipo||'Cliente'}</td><td>${c.cidade||''}</td><td>${btnEdit} ${btnDel}</td></tr>`;
-                }
-            });
-        };
-
         window.renderTableOrcamentos = () => {
             const tb = document.querySelector('#table-orcamentos tbody');
             if(!tb || !currentPerms) return;
@@ -1176,66 +1166,23 @@
             });
         };
 
-        window.toggleFunnelCol = (colId) => {
-            const el = document.getElementById('w-' + colId);
-            const isChecked = document.getElementById('f-col-' + colId).checked;
-            if (el) el.style.display = isChecked ? 'flex' : 'none';
-        };
-
-        window.renderTableLeads = () => {
-            const tb = document.querySelector('#table-leads tbody'); 
-            if(!tb || !currentPerms) return;
-            tb.innerHTML = '';
-            const fCli = document.getElementById('f-leads-cliente').value.toLowerCase();
-            const fAtend = document.getElementById('f-leads-atend').value;
-            const fOrigem = document.getElementById('f-leads-origem').value;
-            const fEtapa = document.getElementById('f-leads-etapa').value;
-            let leadsFiltered = listaLeads.filter(l => {
-                const hist = l.historico || [];
-                const lastH = hist.length ? hist[hist.length-1] : { etapa: l.etapa || 'novo', atendente: '' };
-                const matchCli = l.nome_cliente_cache.toLowerCase().includes(fCli);
-                const matchAtend = fAtend === 'todos' || lastH.atendente === fAtend;
-                const matchOrigem = fOrigem === 'todos' || l.origem === fOrigem;
-                const matchEtapa = fEtapa === 'todos' || lastH.etapa === fEtapa;
-                return matchCli && matchAtend && matchOrigem && matchEtapa;
-            });
-            leadsFiltered.sort((a, b) => leadSortAsc ? a.nome_cliente_cache.localeCompare(b.nome_cliente_cache) : b.nome_cliente_cache.localeCompare(a.nome_cliente_cache));
-            leadsFiltered.forEach(l => {
-                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
-                const desde = l.created_at ? new Date(l.created_at.toDate()).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
-                const cliente = listaClientes.find(c => c.id === l.cliente_id);
-                const tel = (cliente && cliente.telefone) ? cliente.telefone.replace(/\D/g, '') : '';
-                const btnWhats = tel ? `<a href="https://wa.me/55${tel}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; text-decoration:none; font-size:1.1em;">🟢</a>` : `<span style="display:inline-block; width:30px; height:30px;"></span>`;
-                const btnEdit = currentPerms.leads.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button>` : '';
-                const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button>` : '';
-                tb.innerHTML += `<tr onclick="if(${currentPerms.leads.ver}) editarLead('${l.id}')"><td>${desde}</td><td>${l.nome_cliente_cache}</td><td style="text-transform:capitalize">${etapa}</td><td><div class="actions-cell">${btnWhats} ${btnEdit} ${btnDel}</div></td></tr>`;
-            });
-        };
-
-        // EVENTOS E OUTRAS FUNÇÕES AUXILIARES MANTIDOS
-        window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
-        window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
-        window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
-        window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
-        window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
-        
-        // FORMS SUBMIT HANDLERS MANTIDOS
-        document.getElementById('form-lead-main').onsubmit = async(e) => { 
-            e.preventDefault(); if(!currentPerms.leads.gravar) return; const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
-            if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) { alert("Indicação obrigatória."); return; }
-            const d={ cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, origem:origem, indicacao_id: indicacao, pvc_metragem: document.getElementById('lead-pvc-metragem').value, pvc_pecas: document.getElementById('lead-pvc-pecas').value, pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, previsao:document.getElementById('lead-previsao').value, construtora_id: document.getElementById('lead-construtora').value, adm_obra_id: document.getElementById('lead-adm-obra').value, arquiteto_id: document.getElementById('lead-arquiteto').value, responsavel_id: document.getElementById('lead-responsavel').value, rt: document.getElementById('lead-rt').value, updated_at:serverTimestamp() }; 
-            if(id) await updateDoc(doc(db,"leads",id),d); else { d.created_at=serverTimestamp(); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
-            alert('Salvo!'); 
-        };
-
-        window.editarLead = (id) => { 
-            leadAtual = listaLeads.find(l => l.id === id); switchView('leads'); document.getElementById('lead-id').value = id; 
-            document.getElementById('lead-cliente').value = leadAtual.cliente_id; showInfo('cliente', leadAtual.cliente_id); document.getElementById('lead-origem').value = leadAtual.origem; document.getElementById('lead-indicacao').value = leadAtual.indicacao_id || ''; showInfo('indicacao', leadAtual.indicacao_id);
-            document.getElementById('lead-pvc-metragem').value = leadAtual.pvc_metragem || ''; document.getElementById('lead-pvc-pecas').value = leadAtual.pvc_pecas || ''; document.getElementById('lead-pvc-margem-padrao').value = leadAtual.pvc_margem_padrao || ''; document.getElementById('lead-pvc-margem-especial').value = leadAtual.pvc_margem_especial || ''; document.getElementById('lead-pvc-valor-orcamento').value = leadAtual.pvc_valor_orcamento || ''; document.getElementById('lead-pvc-valor-pedido').value = leadAtual.pvc_valor_pedido || '';
-            document.getElementById('lead-alu-metragem').value = leadAtual.alu_metragem || ''; document.getElementById('lead-alu-pecas').value = leadAtual.alu_pecas || ''; document.getElementById('lead-alu-margem-padrao').value = leadAtual.alu_margem_padrao || ''; document.getElementById('lead-alu-margem-especial').value = leadAtual.alu_margem_especial || ''; document.getElementById('lead-alu-valor-orcamento').value = leadAtual.alu_valor_orcamento || ''; document.getElementById('lead-alu-valor-pedido').value = leadAtual.alu_valor_pedido || '';
-            document.getElementById('lead-previsao').value = leadAtual.previsao || ''; document.getElementById('lead-construtora').value = leadAtual.construtora_id || ''; document.getElementById('lead-adm-obra').value = leadAtual.adm_obra_id || ''; document.getElementById('lead-arquiteto').value = leadAtual.arquiteto_id || ''; document.getElementById('lead-responsavel').value = leadAtual.responsavel_id || '';
-            document.getElementById('lead-rt').value = leadAtual.rt || '';
-            document.getElementById('area-historico').style.display = 'block'; document.getElementById('area-arquivos').style.display = 'block'; limparFormHist(); renderTimeline(); renderArquivos();
+        window.editHist = (i) => { 
+            if(!currentPerms.leads.gravar) return; 
+            const h = leadAtual.historico[i]; 
+            document.getElementById('hist-index').value = i; 
+            document.getElementById('hist-atendente').value = h.atendente || ""; 
+            document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; 
+            handleHistContato(h.contato_tipo); 
+            if(h.contato_tipo === 'Outra') document.getElementById('hist-contato-id').value = h.contato_id || ""; 
+            document.getElementById('hist-etapa').value = h.etapa || "novo"; 
+            document.getElementById('hist-temp').value = h.temperatura || ""; 
+            document.getElementById('hist-prog').value = h.data_programada || ''; 
+            document.getElementById('hist-real').value = h.data_realizada || ''; 
+            document.getElementById('hist-resultado').value = h.resultado || ''; 
+            document.getElementById('hist-resumo').value = h.resumo || ""; 
+            document.getElementById('hist-upd-real').value = h.updated_realizada_at || '-'; 
+            document.getElementById('btn-save-hist').innerText = "Atualizar Interação"; 
+            document.getElementById('form-historico').scrollIntoView({ behavior: 'smooth' });
         };
 
         window.renderTimeline = () => { 
@@ -1243,7 +1190,7 @@
             hArray.reverse().forEach((h, indexInTimeline) => { 
                 const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
-                const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? contactData.telefone.replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
+                const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? (contactData.telefone || "").replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
                 let orcIntegrationHtml = '';
                 if(h.etapa === 'orcamento') {
                     const orc = listaOrcamentos.find(o => o.lead_id === leadAtual.id);
@@ -1262,7 +1209,103 @@
             }); 
         };
 
+        window.renderTableLeads = () => {
+            const tb = document.querySelector('#table-leads tbody'); 
+            if(!tb || !currentPerms) return;
+            tb.innerHTML = '';
+            const fCli = document.getElementById('f-leads-cliente').value.toLowerCase();
+            const fAtend = document.getElementById('f-leads-atend').value;
+            const fOrigem = document.getElementById('f-leads-origem').value;
+            const fEtapa = document.getElementById('f-leads-etapa').value;
+            let leadsFiltered = listaLeads.filter(l => {
+                const hist = l.historico || [];
+                const lastH = hist.length ? hist[hist.length-1] : { etapa: l.etapa || 'novo', atendente: '' };
+                const matchCli = (l.nome_cliente_cache || "").toLowerCase().includes(fCli);
+                const matchAtend = fAtend === 'todos' || lastH.atendente === fAtend;
+                const matchOrigem = fOrigem === 'todos' || l.origem === fOrigem;
+                const matchEtapa = fEtapa === 'todos' || lastH.etapa === fEtapa;
+                return matchCli && matchAtend && matchOrigem && matchEtapa;
+            });
+            leadsFiltered.sort((a, b) => leadSortAsc ? (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || "") : (b.nome_cliente_cache || "").localeCompare(a.nome_cliente_cache || ""));
+            leadsFiltered.forEach(l => {
+                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const desde = l.created_at ? new Date(l.created_at.toDate()).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
+                const cliente = listaClientes.find(c => c.id === l.cliente_id);
+                const tel = (cliente && cliente.telefone) ? cliente.telefone.replace(/\D/g, '') : '';
+                const btnWhats = tel ? `<a href="https://wa.me/55${tel}" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; text-decoration:none; font-size:1.1em;">🟢</a>` : `<span style="display:inline-block; width:30px; height:30px;"></span>`;
+                const btnEdit = currentPerms.leads.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarLead('${l.id}')">✏️</button>` : '';
+                const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirLead('${l.id}')" style="color:red">🗑️</button>` : '';
+                tb.innerHTML += `<tr onclick="if(${currentPerms.leads.ver}) editarLead('${l.id}')"><td>${desde}</td><td>${l.nome_cliente_cache}</td><td style="text-transform:capitalize">${etapa}</td><td><div class="actions-cell">${btnWhats} ${btnEdit} ${btnDel}</div></td></tr>`;
+            });
+        };
+
+        window.toggleFunnelCol = (colId) => {
+            const el = document.getElementById('w-' + colId);
+            const isChecked = document.getElementById('f-col-' + colId).checked;
+            if (el) el.style.display = isChecked ? 'flex' : 'none';
+        };
+
+        window.handleFileUpload = async (files) => { if(!leadAtual) return alert("Salve os dados básicos antes."); const file = files[0]; if(!file) return; const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`; const storageRef = ref(storage, path); try { const snapshot = await uploadBytes(storageRef, file); const url = await getDownloadURL(snapshot.ref); const arquivos = leadAtual.arquivos || []; arquivos.push({ name: file.name, url: url, path: path }); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } catch (err) { alert("Erro no upload."); } document.getElementById('lead-file-input').value = ""; };
+        window.renderArquivos = () => { const list = document.getElementById('lead-files-list'); list.innerHTML = ""; if(!leadAtual || !leadAtual.arquivos) return; leadAtual.arquivos.forEach((file, idx) => { const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red">🗑️</button>` : ''; list.innerHTML += `<div class="file-item"><a href="${file.url}" target="_blank" class="file-name">${file.name}</a>${btnDel}</div>`; }); };
+        window.excluirArquivo = async (idx) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; const file = leadAtual.arquivos[idx]; const storageRef = ref(storage, file.path); try { await deleteObject(storageRef); const arquivos = [...leadAtual.arquivos]; arquivos.splice(idx, 1); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } catch (err) { alert("Erro ao excluir."); } };
+        window.handleHistContato = (val) => { 
+            const areaOutra = document.getElementById('area-contato-outra'); 
+            areaOutra.style.display = (val === 'Outra') ? 'block' : 'none'; 
+            let targetId = ""; 
+            if(val === 'Proprietário') targetId = leadAtual.cliente_id; 
+            else if(val === 'Arquiteto') targetId = leadAtual.arquiteto_id; 
+            else if(val === 'Responsável Obra') targetId = leadAtual.responsavel_id; 
+            else if(val === 'Adm Obra') targetId = leadAtual.adm_obra_id; 
+            else if(val === 'Construtora') targetId = leadAtual.construtora_id; 
+            if(val !== 'Outra' && val !== "") updateHistContactDisplay(targetId); 
+        };
+        window.updateHistContactDisplay = (id) => { const span = document.getElementById('info-hist-contato'); if(!id) { span.innerHTML = "Não vinculado."; return; } const item = listaClientes.find(c => c.id === id); span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Não vinculado."; };
+        window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
+        window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
+        window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
+        window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
+        window.excluirLead = async(id) => { if(!currentPerms.leads.excluir) return; if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
+        window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
+        
+        document.getElementById('form-cliente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, cidade:document.getElementById('cli-cidade').value, endereco:document.getElementById('cli-endereco').value }; if(id) await updateDoc(doc(db,"clientes",id),d); else await addDoc(collection(db,"clientes"),d); document.getElementById('form-cliente').reset(); document.getElementById('cli-id').value=''; };
+        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
+        
+        document.getElementById('form-lead-main').onsubmit = async(e) => { 
+            e.preventDefault(); if(!currentPerms.leads.gravar) return; const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
+            if(origem.toUpperCase().includes("INDICAÇÃO") && !indicacao) { alert("Indicação obrigatória."); return; }
+            const d={ cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, origem:origem, indicacao_id: indicacao, pvc_metragem: document.getElementById('lead-pvc-metragem').value, pvc_pecas: document.getElementById('lead-pvc-pecas').value, pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, previsao:document.getElementById('lead-previsao').value, construtora_id: document.getElementById('lead-construtora').value, adm_obra_id: document.getElementById('lead-adm-obra').value, arquiteto_id: document.getElementById('lead-arquiteto').value, responsavel_id: document.getElementById('lead-responsavel').value, rt: document.getElementById('lead-rt').value, updated_at:serverTimestamp() }; 
+            if(id) await updateDoc(doc(db,"leads",id),d); else { d.created_at=serverTimestamp(); d.etapa='novo'; await addDoc(collection(db,"leads"),d); } 
+            alert('Salvo!'); 
+        };
+
+        window.editarLead = (id) => { 
+            leadAtual = listaLeads.find(l => l.id === id); switchView('leads'); document.getElementById('lead-id').value = id; 
+            document.getElementById('lead-cliente').value = leadAtual.cliente_id; showInfo('cliente', leadAtual.cliente_id); document.getElementById('lead-origem').value = leadAtual.origem; document.getElementById('lead-indicacao').value = leadAtual.indicacao_id || ''; showInfo('indicacao', leadAtual.indicacao_id);
+            document.getElementById('lead-pvc-metragem').value = leadAtual.pvc_metragem || ''; document.getElementById('lead-pvc-pecas').value = leadAtual.pvc_pecas || ''; document.getElementById('lead-pvc-margem-padrao').value = leadAtual.pvc_margem_padrao || ''; document.getElementById('lead-pvc-margem-especial').value = leadAtual.pvc_margem_especial || ''; document.getElementById('lead-pvc-valor-orcamento').value = leadAtual.pvc_valor_orcamento || ''; document.getElementById('lead-pvc-valor-pedido').value = leadAtual.pvc_valor_pedido || '';
+            document.getElementById('lead-alu-metragem').value = leadAtual.alu_metragem || ''; document.getElementById('lead-alu-pecas').value = leadAtual.alu_pecas || ''; document.getElementById('lead-alu-margem-padrao').value = leadAtual.alu_margem_padrao || ''; document.getElementById('lead-alu-margem-especial').value = leadAtual.alu_margem_especial || ''; document.getElementById('lead-alu-valor-orcamento').value = leadAtual.alu_valor_orcamento || ''; document.getElementById('lead-alu-valor-pedido').value = leadAtual.alu_valor_pedido || '';
+            document.getElementById('lead-previsao').value = leadAtual.previsao || ''; document.getElementById('lead-construtora').value = leadAtual.construtora_id || ''; document.getElementById('lead-adm-obra').value = leadAtual.adm_obra_id || ''; document.getElementById('lead-arquiteto').value = leadAtual.arquiteto_id || ''; document.getElementById('lead-responsavel').value = leadAtual.responsavel_id || '';
+            document.getElementById('lead-rt').value = leadAtual.rt || '';
+            document.getElementById('area-historico').style.display = 'block'; document.getElementById('area-arquivos').style.display = 'block'; limparFormHist(); renderTimeline(); renderArquivos();
+        };
+
+        document.getElementById('form-historico').onsubmit = async(e) => {
+            e.preventDefault(); if(!currentPerms.leads.gravar) return;
+            const idx = document.getElementById('hist-index').value;
+            const h = { atendente: document.getElementById('hist-atendente').value, contato_tipo: document.getElementById('hist-contato-tipo').value, contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "", etapa: document.getElementById('hist-etapa').value, data_programada: document.getElementById('hist-prog').value, data_realizada: document.getElementById('hist-real').value, resultado: document.getElementById('hist-resultado').value, resumo: document.getElementById('hist-resumo').value, temperatura: document.getElementById('hist-temp').value, data_operacao: new Date().toLocaleString('pt-BR') };
+            if (h.etapa !== 'novo' && !h.temperatura) { alert("Classificação estrelas obrigatória."); return; }
+            if (h.data_realizada && !h.resultado) { alert("Resultado é obrigatório."); return; }
+            let hist = [...(leadAtual.historico || [])];
+            if(idx !== "") { h.updated_realizada_at = (hist[parseInt(idx)].data_realizada !== h.data_realizada) ? new Date().toLocaleString('pt-BR') : (hist[parseInt(idx)].updated_realizada_at || '-'); hist[parseInt(idx)] = h; } 
+            else { h.updated_realizada_at = h.data_realizada ? new Date().toLocaleString('pt-BR') : '-'; hist.push(h); if (h.data_realizada && h.resultado === "Insucesso") { hist.push({ ...h, data_realizada: "", resultado: "", data_operacao: new Date().toLocaleString('pt-BR'), updated_realizada_at: '-', resumo: "REAGENDAMENTO: " + h.resumo }); } }
+            await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: h.etapa }); renderTimeline(); limparFormHist();
+        };
+
+        window.delHist = async (i) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); renderTimeline(); };
         window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); };
+        
+        // APONTAMENTOS / ORÇAMENTOS - MANTIDOS CONFORME ORIGINAL
+        window.populateHistSelectDireto = (leadId) => { const sel = document.getElementById('apt-hist-ref-direto'); sel.innerHTML = '<option value="">Selecione...</option>'; const lead = listaLeads.find(l => l.id === leadId); if(lead && lead.historico) { lead.historico.forEach((h, idx) => { if (h.etapa === 'orcamento') sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`; }); } };
+        window.limparFormApontamentoDireto = () => { document.getElementById('form-apontamento-direto').reset(); document.getElementById('apt-orc-id-direto').value = ""; document.getElementById('apt-index-editing-direto').value = "-1"; };
     </script>
 </body>
 </html>
