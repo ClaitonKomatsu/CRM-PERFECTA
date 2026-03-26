@@ -106,7 +106,6 @@
         .hist-mini-card:hover { background: #f0f7ff; }
         .actions-cell { display: flex; align-items: center; justify-content: center; gap: 8px; height: 100%; }
 
-        /* Estilos Extras - Permissões & Login */
         #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
         .perm-group { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
         .perm-group h4 { margin: 0 0 10px 0; font-size: 0.9em; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
@@ -743,7 +742,6 @@
         const storage = getStorage(app);
         const auth = getAuth(app);
 
-        // VARIÁVEIS DE ESTADO
         let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         let leadSortAsc = false;
@@ -832,7 +830,6 @@
             span.innerText = item ? `📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "";
         };
 
-        // ========== AUTHENTICATION ==========
         let loginMode = 'login';
         document.getElementById('toggle-login-mode').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1185,10 +1182,25 @@
             document.getElementById('form-historico').scrollIntoView({ behavior: 'smooth' });
         };
 
+        window.novoHistBaseado = (i) => { 
+            if(!currentPerms.leads.gravar) return; 
+            const h = leadAtual.historico[i]; 
+            limparFormHist(); 
+            document.getElementById('hist-atendente').value = h.atendente || ""; 
+            document.getElementById('hist-contato-tipo').value = h.contato_tipo || ""; 
+            handleHistContato(h.contato_tipo); 
+            if(h.contato_tipo === 'Outra') {
+                document.getElementById('hist-contato-id').value = h.contato_id || "";
+            }
+            document.getElementById('hist-etapa').value = h.etapa || "novo"; 
+            document.getElementById('hist-temp').value = h.temperatura || ""; 
+            document.getElementById('form-historico').scrollIntoView({ behavior: 'smooth' }); 
+        };
+
         window.renderTimeline = () => { 
             const div = document.getElementById('timeline-list'); div.innerHTML = ''; const hArray = (leadAtual.historico || []).map((h, i) => ({...h, idx: i}));
             hArray.reverse().forEach((h, indexInTimeline) => { 
-                const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo baseado">➕</button>` : '';
+                const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo Histórico">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? (contactData.telefone || "").replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
                 let orcIntegrationHtml = '';
@@ -1303,7 +1315,6 @@
         window.delHist = async (i) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); renderTimeline(); };
         window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); };
         
-        // APONTAMENTOS / ORÇAMENTOS - MANTIDOS CONFORME ORIGINAL
         window.populateHistSelectDireto = (leadId) => { const sel = document.getElementById('apt-hist-ref-direto'); sel.innerHTML = '<option value="">Selecione...</option>'; const lead = listaLeads.find(l => l.id === leadId); if(lead && lead.historico) { lead.historico.forEach((h, idx) => { if (h.etapa === 'orcamento') sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`; }); } };
         window.limparFormApontamentoDireto = () => { document.getElementById('form-apontamento-direto').reset(); document.getElementById('apt-orc-id-direto').value = ""; document.getElementById('apt-index-editing-direto').value = "-1"; };
     </script>
