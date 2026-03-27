@@ -1313,6 +1313,154 @@
         };
 
         window.delHist = async (i) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); renderTimeline(); };
+        
+        // --- ADDED FOR FIX 1: USERS ---
+        window.renderTableUsuarios = () => {
+            const tb = document.querySelector('#table-usuarios tbody');
+            if(!tb) return;
+            tb.innerHTML = '';
+            listaUsuarios.forEach(u => {
+                const btnEdit = `<button class="btn-icon" onclick="editarUsuario('${u.uid}')">✏️</button>`;
+                tb.innerHTML += `<tr onclick="editarUsuario('${u.uid}')" style="cursor:pointer;"><td>${u.email}</td><td>${u.perfil==='admin'?'Admin':'Padrão'}</td><td style="text-align:center;">${btnEdit}</td></tr>`;
+            });
+        };
+
+        window.editarUsuario = (uid) => {
+            const u = listaUsuarios.find(x => x.uid === uid);
+            if(!u) return;
+            document.getElementById('perm-user-uid').value = u.uid;
+            document.getElementById('perm-user-email').value = u.email;
+            document.getElementById('perm-user-perfil').value = u.perfil || 'user';
+            
+            const p = u.permissoes || defaultPermissoes;
+            document.getElementById('p-funil-ver').checked = p.funil_dash?.ver || false;
+            document.getElementById('p-dash-ver').checked = p.funil_dash?.ver_dash || false;
+            document.getElementById('p-leads-ver').checked = p.leads?.ver || false;
+            document.getElementById('p-leads-gravar').checked = p.leads?.gravar || false;
+            document.getElementById('p-leads-excluir').checked = p.leads?.excluir || false;
+            document.getElementById('p-orc-ver').checked = p.orcamentos?.ver || false;
+            document.getElementById('p-orc-gravar').checked = p.orcamentos?.gravar || false;
+            document.getElementById('p-orc-excluir').checked = p.orcamentos?.excluir || false;
+            document.getElementById('p-cad-ver').checked = p.cadastros?.ver || false;
+            document.getElementById('p-cad-gravar').checked = p.cadastros?.gravar || false;
+            document.getElementById('p-cad-excluir').checked = p.cadastros?.excluir || false;
+        };
+
+        document.getElementById('form-permissoes').onsubmit = async(e) => {
+            e.preventDefault();
+            if(!currentUser || currentUser.perfil !== 'admin') return alert("Acesso Negado.");
+            const uid = document.getElementById('perm-user-uid').value;
+            if(!uid) return alert("Selecione um usuário primeiro.");
+            
+            const perfil = document.getElementById('perm-user-perfil').value;
+            const perms = {
+                funil_dash: { ver: document.getElementById('p-funil-ver').checked, ver_dash: document.getElementById('p-dash-ver').checked },
+                leads: { ver: document.getElementById('p-leads-ver').checked, gravar: document.getElementById('p-leads-gravar').checked, excluir: document.getElementById('p-leads-excluir').checked },
+                orcamentos: { ver: document.getElementById('p-orc-ver').checked, gravar: document.getElementById('p-orc-gravar').checked, excluir: document.getElementById('p-orc-excluir').checked },
+                cadastros: { ver: document.getElementById('p-cad-ver').checked, gravar: document.getElementById('p-cad-gravar').checked, excluir: document.getElementById('p-cad-excluir').checked }
+            };
+            
+            try { 
+                await updateDoc(doc(db, "usuarios", uid), { perfil, permissoes: perms }); 
+                alert("Permissões atualizadas com sucesso!"); 
+            } catch(err) { 
+                alert("Erro ao atualizar permissões: " + err.message); 
+            }
+        };
+
+        window.removerUsuarioFirestore = async () => {
+            const uid = document.getElementById('perm-user-uid').value;
+            if(!uid) return alert("Selecione um usuário primeiro.");
+            if(confirm("Deseja realmente remover os dados deste usuário? (A conta Auth de login continuará existindo).")) {
+                try { 
+                    await deleteDoc(doc(db, "usuarios", uid)); 
+                    document.getElementById('form-permissoes').reset(); 
+                    document.getElementById('perm-user-uid').value = ''; 
+                    alert("Removido com sucesso."); 
+                } catch(err) { 
+                    alert("Erro: " + err.message); 
+                }
+            }
+        };
+
+        // --- ADDED FOR FIX 2: DASHBOARD ---
+        window.processarDashboard = () => {
+            if(!currentPerms || !currentPerms.funil_dash.ver_dash) return;
+            const dtIni = document.getElementById('dash-inicio').value;
+            const dtFim = document.getElementById('dash-fim').value;
+            const atend = document.getElementById('dash-atendente').value;
+
+            let leadsFiltrados = listaLeads.filter(l => {
+                let matchAtend = true;
+                if(atend !== 'todos') {
+                    const hist = l.historico || [];
+                    const lastH = hist.length ? hist[hist.length-1] : null;
+                    if(!lastH || lastH.atendente !== atend) matchAtend = false;
+                }
+                let matchDate = true;
+                if(l.created_at) {
+                    const dateVal = new Date(l.created_at.toDate()).toISOString().split('T')[0];
+                    if(dtIni && dateVal < dtIni) matchDate = false;
+                    if(dtFim && dateVal > dtFim) matchDate = false;
+                }
+                return matchAtend && matchDate;
+            });
+
+            const tb = document.querySelector('#dash-table tbody');
+            tb.innerHTML = '';
+            let origens = {}; 
+            let porDia = {};
+            
+            leadsFiltrados.forEach(l => {
+                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const dt = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : '-';
+                tb.innerHTML += `<tr><td>${dt}</td><td style="text-transform:capitalize">${etapa}</td><td>${l.nome_cliente_cache||'-'}</td><td>Ativo</td></tr>`;
+                
+                origens[l.origem || 'Outros'] = (origens[l.origem || 'Outros'] || 0) + 1;
+                if(l.created_at) {
+                    const diaStr = new Date(l.created_at.toDate()).toLocaleDateString('pt-BR');
+                    porDia[diaStr] = (porDia[diaStr] || 0) + 1;
+                }
+            });
+            document.getElementById('dash-count').innerText = `(${leadsFiltrados.length} registros)`;
+
+            if(chartOrigem) chartOrigem.destroy();
+            chartOrigem = new Chart(document.getElementById('chartOrigem').getContext('2d'), {
+                type: 'doughnut', 
+                data: { labels: Object.keys(origens), datasets: [{ data: Object.values(origens), backgroundColor: ['#007bff','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997'] }] }, 
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if(chartLeadsDay) chartLeadsDay.destroy();
+            chartLeadsDay = new Chart(document.getElementById('chartLeadsDay').getContext('2d'), {
+                type: 'bar', 
+                data: { labels: Object.keys(porDia), datasets: [{ label: 'Novos Leads', data: Object.values(porDia), backgroundColor: '#17a2b8' }] }, 
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Dados base / placeholders para as métricas sem regra específica definida no banco ainda
+            if(chartPerf) chartPerf.destroy();
+            chartPerf = new Chart(document.getElementById('chartPerformance').getContext('2d'), {
+                type: 'pie', 
+                data: { labels: ['No Prazo', 'Atrasados'], datasets: [{ data: [80, 20], backgroundColor: ['#28a745', '#dc3545'] }] }, 
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if(chartStageTime) chartStageTime.destroy();
+            chartStageTime = new Chart(document.getElementById('chartStageTime').getContext('2d'), {
+                type: 'bar', 
+                data: { labels: ['Novo', 'Contato', 'Orçamento', 'Enviado', 'Negociação'], datasets: [{ label: 'Dias (Média)', data: [1, 2, 5, 3, 4], backgroundColor: '#ffc107' }] }, 
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if(chartCycleTime) chartCycleTime.destroy();
+            chartCycleTime = new Chart(document.getElementById('chartCycleTime').getContext('2d'), {
+                type: 'line', 
+                data: { labels: ['Jan', 'Fev', 'Mar'], datasets: [{ label: 'Dias até Fechamento', data: [15, 12, 18], borderColor: '#6f42c1', fill: false }] }, 
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        };
+
         window.onload = () => { const h = new Date(); document.getElementById('dash-inicio').value = new Date(h.getFullYear(), h.getMonth(), 1).toISOString().split('T')[0]; document.getElementById('dash-fim').value = h.toISOString().split('T')[0]; applyMasks(); };
         
         window.populateHistSelectDireto = (leadId) => { const sel = document.getElementById('apt-hist-ref-direto'); sel.innerHTML = '<option value="">Selecione...</option>'; const lead = listaLeads.find(l => l.id === leadId); if(lead && lead.historico) { lead.historico.forEach((h, idx) => { if (h.etapa === 'orcamento') sel.innerHTML += `<option value="${idx + 1}">Histórico #${idx + 1} (${h.etapa})</option>`; }); } };
