@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfecta CRM - V16.1 (Auth & Permissões)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
     <style>
         :root {
@@ -614,7 +615,7 @@
                 <div class="filter-group"><label>Início</label><input type="date" id="dash-inicio"></div>
                 <div class="filter-group"><label>Fim</label><input type="date" id="dash-fim"></div>
                 <div class="filter-group"><label>Atendente</label><select id="dash-atendente"><option value="todos">Todos</option></select></div>
-                <button class="btn-save" style="width:auto; height:42px; padding:0 20px;" onclick="processarDashboard()">Atualizar</button>
+                <button class="btn-save" style="width:auto; height:42px; padding:0 20px;" onclick="processarDashboard(false)">Atualizar</button>
             </div>
 
             <div class="charts-container">
@@ -742,9 +743,15 @@
         const storage = getStorage(app);
         const auth = getAuth(app);
 
+        // Desativar DataLabels globalmente para não poluir os gráficos de Barras e Linhas. Será ativado individualmente nos gráficos tipo Pizza.
+        Chart.defaults.plugins.datalabels = { display: false };
+
         let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         let leadSortAsc = false;
+        
+        // Filtros globais do dashboard para interação
+        let dashFilters = { origem: null, data: null };
         
         let currentUser = null;
         let currentPerms = null;
@@ -1272,7 +1279,7 @@
             if(val !== 'Outra' && val !== "") updateHistContactDisplay(targetId); 
         };
         window.updateHistContactDisplay = (id) => { const span = document.getElementById('info-hist-contato'); if(!id) { span.innerHTML = "Não vinculado."; return; } const item = listaClientes.find(c => c.id === id); span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Não vinculado."; };
-        window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(); };
+        window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(false); };
         window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
         window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
         window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
@@ -1314,7 +1321,6 @@
 
         window.delHist = async (i) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; let hist = [...leadAtual.historico]; hist.splice(i, 1); const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist, etapa: ultEtapa }); renderTimeline(); };
         
-        // --- ADDED FOR FIX 1: USERS ---
         window.renderTableUsuarios = () => {
             const tb = document.querySelector('#table-usuarios tbody');
             if(!tb) return;
@@ -1383,14 +1389,17 @@
             }
         };
 
-        // --- ADDED FOR FIX 2: DASHBOARD ---
-        window.processarDashboard = () => {
+        window.processarDashboard = (keepFilters = false) => {
             if(!currentPerms || !currentPerms.funil_dash.ver_dash) return;
+            
+            if(!keepFilters) { dashFilters = { origem: null, data: null }; }
+
             const dtIni = document.getElementById('dash-inicio').value;
             const dtFim = document.getElementById('dash-fim').value;
             const atend = document.getElementById('dash-atendente').value;
 
-            let leadsFiltrados = listaLeads.filter(l => {
+            // Filtro base (Início, Fim e Atendente)
+            let baseLeads = listaLeads.filter(l => {
                 let matchAtend = true;
                 if(atend !== 'todos') {
                     const hist = l.historico || [];
@@ -1406,44 +1415,107 @@
                 return matchAtend && matchDate;
             });
 
-            const tb = document.querySelector('#dash-table tbody');
-            tb.innerHTML = '';
+            // Agregações de apoio para cruzamento dos filtros interativos
             let origens = {}; 
             let porDia = {};
             
-            leadsFiltrados.forEach(l => {
+            baseLeads.forEach(l => {
+                let lOrigem = l.origem || 'Outros';
+                let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
+                let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
+                let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
+                
+                // Povoa gráfico Pizza respeitando apenas o filtro da Data clicada (se houver)
+                if(matchDataFilt) { origens[lOrigem] = (origens[lOrigem] || 0) + 1; }
+                
+                // Povoa gráfico de Barras respeitando apenas o filtro da Origem clicada (se houver)
+                if(matchOrigemFilt && diaStr) { porDia[diaStr] = (porDia[diaStr] || 0) + 1; }
+            });
+
+            // Relatório da Tabela cruza e respeita TODOS os filtros ativos
+            let tableLeads = baseLeads.filter(l => {
+                let lOrigem = l.origem || 'Outros';
+                let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
+                let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
+                let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
+                return matchOrigemFilt && matchDataFilt;
+            });
+
+            const tb = document.querySelector('#dash-table tbody');
+            tb.innerHTML = '';
+            tableLeads.forEach(l => {
                 const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
                 const dt = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : '-';
                 tb.innerHTML += `<tr><td>${dt}</td><td style="text-transform:capitalize">${etapa}</td><td>${l.nome_cliente_cache||'-'}</td><td>Ativo</td></tr>`;
-                
-                origens[l.origem || 'Outros'] = (origens[l.origem || 'Outros'] || 0) + 1;
-                if(l.created_at) {
-                    const diaStr = new Date(l.created_at.toDate()).toLocaleDateString('pt-BR');
-                    porDia[diaStr] = (porDia[diaStr] || 0) + 1;
-                }
             });
-            document.getElementById('dash-count').innerText = `(${leadsFiltrados.length} registros)`;
+            document.getElementById('dash-count').innerText = `(${tableLeads.length} registros)`;
 
             if(chartOrigem) chartOrigem.destroy();
             chartOrigem = new Chart(document.getElementById('chartOrigem').getContext('2d'), {
-                type: 'doughnut', 
-                data: { labels: Object.keys(origens), datasets: [{ data: Object.values(origens), backgroundColor: ['#007bff','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997'] }] }, 
-                options: { responsive: true, maintainAspectRatio: false }
+                type: 'pie', 
+                plugins: [ChartDataLabels],
+                data: { labels: Object.keys(origens), datasets: [{ data: Object.values(origens), backgroundColor: ['#000000','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997'] }] }, 
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: true, color: '#fff', font: { weight: 'bold', size: 11 },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if(sum === 0) return '';
+                                let p = (value * 100 / sum).toFixed(1) + "%";
+                                return `${value} (${p})`;
+                            }
+                        }
+                    },
+                    onClick: (e, elements) => {
+                        if(elements.length > 0) {
+                            const label = chartOrigem.data.labels[elements[0].index];
+                            dashFilters.origem = (dashFilters.origem === label) ? null : label;
+                            processarDashboard(true);
+                        }
+                    }
+                }
             });
 
             if(chartLeadsDay) chartLeadsDay.destroy();
             chartLeadsDay = new Chart(document.getElementById('chartLeadsDay').getContext('2d'), {
                 type: 'bar', 
                 data: { labels: Object.keys(porDia), datasets: [{ label: 'Novos Leads', data: Object.values(porDia), backgroundColor: '#17a2b8' }] }, 
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if(elements.length > 0) {
+                            const label = chartLeadsDay.data.labels[elements[0].index];
+                            dashFilters.data = (dashFilters.data === label) ? null : label;
+                            processarDashboard(true);
+                        }
+                    }
+                }
             });
 
-            // Dados base / placeholders para as métricas sem regra específica definida no banco ainda
             if(chartPerf) chartPerf.destroy();
             chartPerf = new Chart(document.getElementById('chartPerformance').getContext('2d'), {
                 type: 'pie', 
+                plugins: [ChartDataLabels],
                 data: { labels: ['No Prazo', 'Atrasados'], datasets: [{ data: [80, 20], backgroundColor: ['#28a745', '#dc3545'] }] }, 
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            display: true, color: '#fff', font: { weight: 'bold', size: 11 },
+                            formatter: (value, ctx) => {
+                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if(sum === 0) return '';
+                                let p = (value * 100 / sum).toFixed(1) + "%";
+                                return `${value} (${p})`;
+                            }
+                        }
+                    }
+                }
             });
 
             if(chartStageTime) chartStageTime.destroy();
