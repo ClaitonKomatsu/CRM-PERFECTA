@@ -77,9 +77,9 @@
         .dashboard-grid { overflow-y: auto; padding-bottom: 20px; height: 100%; display: flex; flex-direction: column; }
         .filter-bar { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; flex-shrink: 0; }
         .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-shrink: 0; margin-bottom: 15px; }
-        .chart-box { background: white; padding: 10px; border-radius: 8px; height: 220px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
-        .chart-box-wide { grid-column: span 2; height: 300px; }
-        .chart-title { font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #555; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .chart-box { background: white; padding: 10px; border-radius: 8px; height: 220px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; cursor: pointer; }
+        .chart-box-wide { grid-column: span 2; height: 300px; cursor: default; }
+        .chart-title { font-weight: bold; font-size: 0.85em; margin-bottom: 5px; color: #555; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; pointer-events: none; }
         .metric-badge { position: absolute; top: 35px; right: 15px; background: #ffebee; color: #d32f2f; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
 
         .btn-save { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -743,7 +743,7 @@
         const storage = getStorage(app);
         const auth = getAuth(app);
 
-        // Desativar DataLabels globalmente para não poluir os gráficos de Barras e Linhas. Será ativado individualmente nos gráficos tipo Pizza.
+        // Desativar DataLabels globalmente
         Chart.defaults.plugins.datalabels = { display: false };
 
         let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], leadAtual=null, starFilters=[1,2,3,4,5];
@@ -1408,33 +1408,56 @@
                 }
                 let matchDate = true;
                 if(l.created_at) {
-                    const dateVal = new Date(l.created_at.toDate()).toISOString().split('T')[0];
+                    const dateObj = new Date(l.created_at.toDate());
+                    // Formatação segura de Data Local sem Timezone issues
+                    const dateVal = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
                     if(dtIni && dateVal < dtIni) matchDate = false;
                     if(dtFim && dateVal > dtFim) matchDate = false;
                 }
                 return matchAtend && matchDate;
             });
 
-            // Agregações de apoio para cruzamento dos filtros interativos
+            // Agregações para cruzamento dos filtros interativos
             let origens = {}; 
             let porDia = {};
             
             baseLeads.forEach(l => {
-                let lOrigem = l.origem || 'Outros';
+                let lOrigem = (l.origem || 'Outros').trim();
                 let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
                 let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
                 let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
                 
-                // Povoa gráfico Pizza respeitando apenas o filtro da Data clicada (se houver)
+                // Respeitando apenas o filtro cruzado correspondente para geração dos dados dos gráficos
                 if(matchDataFilt) { origens[lOrigem] = (origens[lOrigem] || 0) + 1; }
-                
-                // Povoa gráfico de Barras respeitando apenas o filtro da Origem clicada (se houver)
                 if(matchOrigemFilt && diaStr) { porDia[diaStr] = (porDia[diaStr] || 0) + 1; }
             });
 
-            // Relatório da Tabela cruza e respeita TODOS os filtros ativos
+            // Ordenando Origens do maior para o menor para o novo gráfico de barras horizontais
+            let sortedOrigensKeys = Object.keys(origens).sort((a,b) => origens[b] - origens[a]);
+            let sortedOrigensValues = sortedOrigensKeys.map(k => origens[k]);
+            
+            // Criando cores visuais para feedback do clique em "Origens"
+            let bgColorsOrigem = sortedOrigensKeys.map(key => {
+                if (!dashFilters.origem) return '#007bff';
+                return key === dashFilters.origem ? '#007bff' : 'rgba(0, 123, 255, 0.2)';
+            });
+
+            // Ordenando os dias cronologicamente para as barras diárias
+            let sortedDiasKeys = Object.keys(porDia).sort((a,b) => {
+                let [da,ma,ya] = a.split('/'); let [db,mb,yb] = b.split('/');
+                return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+            });
+            let sortedDiasValues = sortedDiasKeys.map(k => porDia[k]);
+            
+            // Criando cores visuais para feedback do clique em "Dias"
+            let bgColorsDia = sortedDiasKeys.map(key => {
+                if (!dashFilters.data) return '#17a2b8';
+                return key === dashFilters.data ? '#17a2b8' : 'rgba(23, 162, 184, 0.2)';
+            });
+
+            // Relatório da Tabela: cruza e respeita estritamente TODOS os filtros ativos
             let tableLeads = baseLeads.filter(l => {
-                let lOrigem = l.origem || 'Outros';
+                let lOrigem = (l.origem || 'Outros').trim();
                 let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
                 let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
                 let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
@@ -1452,15 +1475,26 @@
 
             if(chartOrigem) chartOrigem.destroy();
             chartOrigem = new Chart(document.getElementById('chartOrigem').getContext('2d'), {
-                type: 'pie', 
+                type: 'bar', 
                 plugins: [ChartDataLabels],
-                data: { labels: Object.keys(origens), datasets: [{ data: Object.values(origens), backgroundColor: ['#000000','#28a745','#dc3545','#ffc107','#17a2b8','#6f42c1','#fd7e14','#20c997'] }] }, 
+                data: { 
+                    labels: sortedOrigensKeys, 
+                    datasets: [{ 
+                        label: 'Leads',
+                        data: sortedOrigensValues, 
+                        backgroundColor: bgColorsOrigem 
+                    }] 
+                }, 
                 options: { 
+                    indexAxis: 'y',
                     responsive: true, 
                     maintainAspectRatio: false,
+                    scales: { x: { beginAtZero: true, grace: '30%' } }, // Dá espaço na direita para o label preto não cortar
                     plugins: {
+                        legend: { display: false },
                         datalabels: {
-                            display: true, color: '#fff', font: { weight: 'bold', size: 11 },
+                            display: true, color: '#000', font: { weight: 'bold', size: 11 },
+                            anchor: 'end', align: 'right', // Coloca o texto fora/ao final da barra horizontal
                             formatter: (value, ctx) => {
                                 let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
                                 if(sum === 0) return '';
@@ -1482,10 +1516,18 @@
             if(chartLeadsDay) chartLeadsDay.destroy();
             chartLeadsDay = new Chart(document.getElementById('chartLeadsDay').getContext('2d'), {
                 type: 'bar', 
-                data: { labels: Object.keys(porDia), datasets: [{ label: 'Novos Leads', data: Object.values(porDia), backgroundColor: '#17a2b8' }] }, 
+                data: { 
+                    labels: sortedDiasKeys, 
+                    datasets: [{ 
+                        label: 'Novos Leads', 
+                        data: sortedDiasValues, 
+                        backgroundColor: bgColorsDia 
+                    }] 
+                }, 
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     onClick: (e, elements) => {
                         if(elements.length > 0) {
                             const label = chartLeadsDay.data.labels[elements[0].index];
