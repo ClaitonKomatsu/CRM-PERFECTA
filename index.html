@@ -262,7 +262,7 @@
                         <option value="Paralizado">Paralizado</option>
                         <option value="Concluído">Concluído</option>
                         <option value="Revisado">Revisado</option>
-                        <option value="Revisado">Correção</option>
+                        <option value="Correção">Correção</option>
                         <option value="Enviado">Enviado</option>
                         <option value="Apresentação">Apresentação</option>
                         <option value="Solicitado Alteração">Solicitado Alteração</option>
@@ -272,7 +272,7 @@
                     <textarea id="apt-obs-direto" style="height:60px;"></textarea>
 
                     <button type="submit" class="btn-save" style="background:#17a2b8;" id="btn-save-apontamento">Gravar Apontamento</button>
-                    <button type="button" onclick="limparFormApontamentoDireto()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
+                    <button type="button" onclick="limparFormApontamentoDireto()" style="width:100%; margin-top:5px; padding:8px; background:#6c757d; color:white; border-radius:6px; cursor:pointer;">Limpar / Novo</button>
                 </form>
             </div>
             <div class="list-area">
@@ -707,6 +707,12 @@
                     </div>
 
                     <button type="submit" class="btn-save" style="margin-top: 10px;">Salvar Permissões</button>
+                    
+                    <div style="margin-top: 15px; padding: 10px; border: 1px dashed #ccc; border-radius: 6px; text-align: center;">
+                        <p style="font-size: 0.8em; color: #666; margin-bottom: 8px;">Usuário perdeu a senha? Envie um link de redefinição para o e-mail acima.</p>
+                        <button type="button" onclick="resetarSenhaUsuario()" style="width: 100%; padding: 8px; background: var(--warning); border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">📧 Redefinir Senha do Usuário</button>
+                    </div>
+
                     <div style="text-align: center; margin-top: 15px;">
                         <button type="button" onclick="removerUsuarioFirestore()" style="color:var(--danger); background:none; border:none; cursor:pointer; font-size:0.9em;">🗑️ Remover Usuário do Firestore</button>
                     </div>
@@ -735,7 +741,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
         const firebaseConfig = { apiKey: "AIzaSyDxikX_gLL3l2fQuHmSZUai5-1CgBGp2ao", authDomain: "orcamento-80415.firebaseapp.com", projectId: "orcamento-80415", storageBucket: "orcamento-80415.firebasestorage.app", messagingSenderId: "767008319616", appId: "1:767008319616:web:78b45f56f92ce7a5091e65" };
         const app = initializeApp(firebaseConfig);
@@ -874,6 +880,61 @@
                 await signOut(auth);
             }
         };
+
+        // --- NOVO: Funções de Redefinição de Senha e Edição/Exclusão reativadas ---
+
+        window.resetarSenhaUsuario = async () => {
+            const email = document.getElementById('perm-user-email').value;
+            if(!email) return alert("Selecione um usuário na tabela primeiro.");
+            if(confirm(`Deseja enviar um e-mail de redefinição de senha para ${email}?`)) {
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    alert("E-mail de redefinição enviado com sucesso!");
+                } catch (e) {
+                    alert("Erro ao enviar: " + e.message);
+                }
+            }
+        };
+
+        window.editarCli = (id) => {
+            const c = listaClientes.find(x => x.id === id);
+            if(!c) return;
+            document.getElementById('cli-id').value = id;
+            document.getElementById('cli-nome').value = c.nome_empresa || "";
+            document.getElementById('cli-tipo').value = c.tipo || "Cliente";
+            document.getElementById('cli-status').value = c.status || "Novo";
+            document.getElementById('cli-telefone').value = c.telefone || "";
+            document.getElementById('cli-email').value = c.email || "";
+            document.getElementById('cli-cidade').value = c.cidade || "";
+            document.getElementById('cli-endereco').value = c.endereco || "";
+            document.getElementById('btn-save-cliente').innerText = "Atualizar Cadastro";
+        };
+
+        window.excluirCli = async (id) => {
+            if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
+            if(confirm("Deseja realmente excluir este registro?")) {
+                await deleteDoc(doc(db, "clientes", id));
+            }
+        };
+
+        window.editarAtend = (id) => {
+            const a = listaAtendentes.find(x => x.id === id);
+            if(!a) return;
+            document.getElementById('atend-id').value = id;
+            document.getElementById('atend-nome').value = a.nome || "";
+            document.getElementById('atend-email').value = a.email || "";
+            document.getElementById('atend-whats').value = a.whats || "";
+            document.getElementById('btn-save-atendente').innerText = "Atualizar Atendente";
+        };
+
+        window.excluirAtend = async (id) => {
+            if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
+            if(confirm("Deseja remover este atendente da equipe?")) {
+                await deleteDoc(doc(db, "atendentes", id));
+            }
+        };
+
+        // --- FIM DAS NOVIDADES ---
 
         function aplicarPermissoesInterface() {
             if (!currentPerms) return;
