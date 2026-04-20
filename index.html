@@ -615,20 +615,20 @@
                 <div class="filter-group"><label>Início</label><input type="date" id="dash-inicio"></div>
                 <div class="filter-group"><label>Fim</label><input type="date" id="dash-fim"></div>
                 <div class="filter-group"><label>Atendente</label><select id="dash-atendente"><option value="todos">Todos</option></select></div>
-                <button class="btn-save" style="width:auto; height:42px; padding:0 20px;" onclick="processarDashboard(false)">Atualizar</button>
+                <button class="btn-save" style="width:auto; height:42px; padding:0 20px;" onclick="resetDashFilters()">Limpar Filtros BI</button>
             </div>
 
             <div class="charts-container">
                 <div class="chart-box">
-                    <div class="chart-title">📍 Leads por Origem</div>
+                    <div class="chart-title">📍 Leads por Origem (Clique p/ Filtrar)</div>
                     <canvas id="chartOrigem"></canvas>
                 </div>
                 <div class="chart-box">
-                    <div class="chart-title">📅 Novos Leads (Por Dia)</div>
+                    <div class="chart-title">📅 Novos Leads (Por Dia - Clique p/ Filtrar)</div>
                     <canvas id="chartLeadsDay"></canvas>
                 </div>
                 <div class="chart-box">
-                    <div class="chart-title">⏱️ Performance e Atraso Médio</div>
+                    <div class="chart-title">⏱️ Performance (Clique p/ Filtrar)</div>
                     <div id="delay-metric" class="metric-badge" style="display:none"></div>
                     <canvas id="chartPerformance"></canvas>
                 </div>
@@ -643,7 +643,7 @@
             </div>
 
             <div class="list-area" style="min-height:300px; margin-top:15px; flex:none;">
-                <h3 style="margin:0 0 10px 0">📋 Relatório Filtrado <span id="dash-count" style="font-size:0.8em; font-weight:normal; color:#666"></span></h3>
+                <h3 style="margin:0 0 10px 0">📋 RELATÓRIO FILTRADO (Clique no Lead p/ Abrir) <span id="dash-count" style="font-size:0.8em; font-weight:normal; color:#666"></span></h3>
                 <div class="table-wrapper">
                     <table id="dash-table">
                         <thead><tr><th>Data</th><th>Etapa</th><th>Cliente</th><th>Status</th></tr></thead>
@@ -756,8 +756,8 @@
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         let leadSortAsc = false;
         
-        // Filtros globais do dashboard para interação
-        let dashFilters = { origem: null, data: null };
+        // --- NOVO: Filtros globais de BI para interação sensitiva ---
+        let biFilters = { origem: null, data: null, status: null };
         
         let currentUser = null;
         let currentPerms = null;
@@ -881,8 +881,6 @@
             }
         };
 
-        // --- NOVO: Funções de Redefinição de Senha e Edição/Exclusão reativadas ---
-
         window.resetarSenhaUsuario = async () => {
             const email = document.getElementById('perm-user-email').value;
             if(!email) return alert("Selecione um usuário na tabela primeiro.");
@@ -933,8 +931,6 @@
                 await deleteDoc(doc(db, "atendentes", id));
             }
         };
-
-        // --- FIM DAS NOVIDADES ---
 
         function aplicarPermissoesInterface() {
             if (!currentPerms) return;
@@ -1450,17 +1446,25 @@
             }
         };
 
-        window.processarDashboard = (keepFilters = false) => {
+        // --- NOVO: Lógica de Dashboard BI Cruzado (Interativo) ---
+        
+        window.resetDashFilters = () => {
+            biFilters = { origem: null, data: null, status: null };
+            processarDashboard(true);
+        };
+
+        window.processarDashboard = (keepInteractiveFilters = false) => {
             if(!currentPerms || !currentPerms.funil_dash.ver_dash) return;
             
-            if(!keepFilters) { dashFilters = { origem: null, data: null }; }
+            // Se não é refresh de interação, limpa filtros cruzados
+            if(!keepInteractiveFilters) { biFilters = { origem: null, data: null, status: null }; }
 
             const dtIni = document.getElementById('dash-inicio').value;
             const dtFim = document.getElementById('dash-fim').value;
             const atend = document.getElementById('dash-atendente').value;
 
-            // Filtro base (Início, Fim e Atendente)
-            let baseLeads = listaLeads.filter(l => {
+            // 1. Filtragem Base (Configurações da barra de filtros)
+            let filteredBase = listaLeads.filter(l => {
                 let matchAtend = true;
                 if(atend !== 'todos') {
                     const hist = l.historico || [];
@@ -1469,169 +1473,113 @@
                 }
                 let matchDate = true;
                 if(l.created_at) {
-                    const dateObj = new Date(l.created_at.toDate());
-                    // Formatação segura de Data Local sem Timezone issues
-                    const dateVal = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
-                    if(dtIni && dateVal < dtIni) matchDate = false;
-                    if(dtFim && dateVal > dtFim) matchDate = false;
+                    const dObj = l.created_at.toDate();
+                    const dVal = dObj.getFullYear() + '-' + String(dObj.getMonth() + 1).padStart(2, '0') + '-' + String(dObj.getDate()).padStart(2, '0');
+                    if(dtIni && dVal < dtIni) matchDate = false;
+                    if(dtFim && dVal > dtFim) matchDate = false;
                 }
                 return matchAtend && matchDate;
             });
 
-            // Agregações para cruzamento dos filtros interativos
-            let origens = {}; 
-            let porDia = {};
-            
-            baseLeads.forEach(l => {
-                let lOrigem = (l.origem || 'Outros').trim();
-                let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
+            // 2. Aplicar Filtros BI Cruzados (Sensibilidade entre gráficos)
+            let leadsToReport = filteredBase.filter(l => {
+                let matchOrigem = biFilters.origem ? (l.origem || 'Outros').trim() === biFilters.origem : true;
                 let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
-                let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
+                let matchData = biFilters.data ? diaStr === biFilters.data : true;
                 
-                // Respeitando apenas o filtro cruzado correspondente para geração dos dados dos gráficos
-                if(matchDataFilt) { origens[lOrigem] = (origens[lOrigem] || 0) + 1; }
-                if(matchOrigemFilt && diaStr) { porDia[diaStr] = (porDia[diaStr] || 0) + 1; }
+                let matchStatus = true;
+                if (biFilters.status) {
+                    const hist = l.historico || [];
+                    const lastH = hist.length ? hist[hist.length-1] : null;
+                    const isLate = lastH?.data_programada && !lastH.data_realizada && new Date(lastH.data_programada) < new Date();
+                    const statusLabel = isLate ? 'Atrasados' : 'No Prazo';
+                    matchStatus = statusLabel === biFilters.status;
+                }
+                return matchOrigem && matchData && matchStatus;
             });
 
-            // Ordenando Origens do maior para o menor para o novo gráfico de barras horizontais
-            let sortedOrigensKeys = Object.keys(origens).sort((a,b) => origens[b] - origens[a]);
-            let sortedOrigensValues = sortedOrigensKeys.map(k => origens[k]);
+            // 3. Gerar Dados Agregados p/ Gráficos
+            let origens = {}; let porDia = {}; let performance = { 'No Prazo': 0, 'Atrasados': 0 };
             
-            // Criando cores visuais para feedback do clique em "Origens"
-            let bgColorsOrigem = sortedOrigensKeys.map(key => {
-                if (!dashFilters.origem) return '#007bff';
-                return key === dashFilters.origem ? '#007bff' : 'rgba(0, 123, 255, 0.2)';
-            });
-
-            // Ordenando os dias cronologicamente para as barras diárias
-            let sortedDiasKeys = Object.keys(porDia).sort((a,b) => {
-                let [da,ma,ya] = a.split('/'); let [db,mb,yb] = b.split('/');
-                return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
-            });
-            let sortedDiasValues = sortedDiasKeys.map(k => porDia[k]);
-            
-            // Criando cores visuais para feedback do clique em "Dias"
-            let bgColorsDia = sortedDiasKeys.map(key => {
-                if (!dashFilters.data) return '#17a2b8';
-                return key === dashFilters.data ? '#17a2b8' : 'rgba(23, 162, 184, 0.2)';
-            });
-
-            // Relatório da Tabela: cruza e respeita estritamente TODOS os filtros ativos
-            let tableLeads = baseLeads.filter(l => {
+            leadsToReport.forEach(l => {
                 let lOrigem = (l.origem || 'Outros').trim();
-                let matchOrigemFilt = dashFilters.origem ? lOrigem === dashFilters.origem : true;
+                origens[lOrigem] = (origens[lOrigem] || 0) + 1;
+                
                 let diaStr = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : null;
-                let matchDataFilt = dashFilters.data ? diaStr === dashFilters.data : true;
-                return matchOrigemFilt && matchDataFilt;
+                if(diaStr) porDia[diaStr] = (porDia[diaStr] || 0) + 1;
+
+                const hist = l.historico || [];
+                const lastH = hist.length ? hist[hist.length-1] : null;
+                const isLate = lastH?.data_programada && !lastH.data_realizada && new Date(lastH.data_programada) < new Date();
+                performance[isLate ? 'Atrasados' : 'No Prazo']++;
             });
 
+            // 4. Renderizar Tabela do Relatório com clique para abrir Lead
             const tb = document.querySelector('#dash-table tbody');
             tb.innerHTML = '';
-            tableLeads.forEach(l => {
+            leadsToReport.forEach(l => {
                 const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
                 const dt = l.created_at ? new Date(l.created_at.toDate()).toLocaleDateString('pt-BR') : '-';
-                tb.innerHTML += `<tr><td>${dt}</td><td style="text-transform:capitalize">${etapa}</td><td>${l.nome_cliente_cache||'-'}</td><td>Ativo</td></tr>`;
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.innerHTML = `<td>${dt}</td><td style="text-transform:capitalize">${etapa}</td><td>${l.nome_cliente_cache||'-'}</td><td>Ativo</td>`;
+                row.onclick = () => window.editarLead(l.id);
+                tb.appendChild(row);
             });
-            document.getElementById('dash-count').innerText = `(${tableLeads.length} registros)`;
+            document.getElementById('dash-count').innerText = `(${leadsToReport.length} registros selecionados)`;
 
+            // 5. Atualizar Gráficos com Eventos de Clique (Sensitivos)
+            
+            // Gráfico Origens
+            const sortedKeys = Object.keys(origens).sort((a,b) => origens[b] - origens[a]);
+            const bgOrigem = sortedKeys.map(k => k === biFilters.origem ? '#ff5252' : '#007bff');
             if(chartOrigem) chartOrigem.destroy();
             chartOrigem = new Chart(document.getElementById('chartOrigem').getContext('2d'), {
-                type: 'bar', 
-                plugins: [ChartDataLabels],
-                data: { 
-                    labels: sortedOrigensKeys, 
-                    datasets: [{ 
-                        label: 'Leads',
-                        data: sortedOrigensValues, 
-                        backgroundColor: bgColorsOrigem 
-                    }] 
-                }, 
+                type: 'bar', plugins: [ChartDataLabels],
+                data: { labels: sortedKeys, datasets: [{ data: sortedKeys.map(k => origens[k]), backgroundColor: bgOrigem }] },
                 options: { 
-                    indexAxis: 'y',
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: { x: { beginAtZero: true, grace: '30%' } }, // Dá espaço na direita para o label preto não cortar
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: {
-                            display: true, color: '#000', font: { weight: 'bold', size: 11 },
-                            anchor: 'end', align: 'right', // Coloca o texto fora/ao final da barra horizontal
-                            formatter: (value, ctx) => {
-                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                if(sum === 0) return '';
-                                let p = (value * 100 / sum).toFixed(1) + "%";
-                                return `${value} (${p})`;
-                            }
-                        }
-                    },
-                    onClick: (e, elements) => {
-                        if(elements.length > 0) {
-                            const label = chartOrigem.data.labels[elements[0].index];
-                            dashFilters.origem = (dashFilters.origem === label) ? null : label;
-                            processarDashboard(true);
-                        }
-                    }
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, datalabels: { display: true, color: '#000', align: 'end', anchor: 'end' } },
+                    onClick: (e, elements) => { if(elements.length > 0) { const label = chartOrigem.data.labels[elements[0].index]; biFilters.origem = (biFilters.origem === label) ? null : label; processarDashboard(true); } }
                 }
             });
 
+            // Gráfico Dias
+            const sortedDias = Object.keys(porDia).sort((a,b) => { let [da,ma,ya] = a.split('/'); let [db,mb,yb] = b.split('/'); return new Date(ya, ma-1, da) - new Date(yb, mb-1, db); });
+            const bgDia = sortedDias.map(k => k === biFilters.data ? '#ff5252' : '#17a2b8');
             if(chartLeadsDay) chartLeadsDay.destroy();
             chartLeadsDay = new Chart(document.getElementById('chartLeadsDay').getContext('2d'), {
-                type: 'bar', 
-                data: { 
-                    labels: sortedDiasKeys, 
-                    datasets: [{ 
-                        label: 'Novos Leads', 
-                        data: sortedDiasValues, 
-                        backgroundColor: bgColorsDia 
-                    }] 
-                }, 
+                type: 'bar',
+                data: { labels: sortedDias, datasets: [{ data: sortedDias.map(k => porDia[k]), backgroundColor: bgDia }] },
                 options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    onClick: (e, elements) => {
-                        if(elements.length > 0) {
-                            const label = chartLeadsDay.data.labels[elements[0].index];
-                            dashFilters.data = (dashFilters.data === label) ? null : label;
-                            processarDashboard(true);
-                        }
-                    }
+                    onClick: (e, elements) => { if(elements.length > 0) { const label = chartLeadsDay.data.labels[elements[0].index]; biFilters.data = (biFilters.data === label) ? null : label; processarDashboard(true); } }
                 }
             });
 
+            // Gráfico Performance (Pizza)
             if(chartPerf) chartPerf.destroy();
             chartPerf = new Chart(document.getElementById('chartPerformance').getContext('2d'), {
-                type: 'pie', 
-                plugins: [ChartDataLabels],
-                data: { labels: ['No Prazo', 'Atrasados'], datasets: [{ data: [80, 20], backgroundColor: ['#28a745', '#dc3545'] }] }, 
+                type: 'pie', plugins: [ChartDataLabels],
+                data: { labels: ['No Prazo', 'Atrasados'], datasets: [{ data: [performance['No Prazo'], performance['Atrasados']], backgroundColor: ['#28a745', '#dc3545'] }] },
                 options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: {
-                        datalabels: {
-                            display: true, color: '#fff', font: { weight: 'bold', size: 11 },
-                            formatter: (value, ctx) => {
-                                let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                if(sum === 0) return '';
-                                let p = (value * 100 / sum).toFixed(1) + "%";
-                                return `${value} (${p})`;
-                            }
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { datalabels: { display: true, color: '#fff', formatter: (v) => v > 0 ? v : '' } },
+                    onClick: (e, elements) => { if(elements.length > 0) { const label = chartPerf.data.labels[elements[0].index]; biFilters.status = (biFilters.status === label) ? null : label; processarDashboard(true); } }
                 }
             });
 
+            // Demais gráficos (Estáticos por enquanto)
             if(chartStageTime) chartStageTime.destroy();
             chartStageTime = new Chart(document.getElementById('chartStageTime').getContext('2d'), {
-                type: 'bar', 
-                data: { labels: ['Novo', 'Contato', 'Orçamento', 'Enviado', 'Negociação'], datasets: [{ label: 'Dias (Média)', data: [1, 2, 5, 3, 4], backgroundColor: '#ffc107' }] }, 
+                type: 'bar', data: { labels: ['Novo', 'Contato', 'Orçamento', 'Enviado', 'Negociação'], datasets: [{ label: 'Dias (Média)', data: [1, 2, 5, 3, 4], backgroundColor: '#ffc107' }] },
                 options: { responsive: true, maintainAspectRatio: false }
             });
 
             if(chartCycleTime) chartCycleTime.destroy();
             chartCycleTime = new Chart(document.getElementById('chartCycleTime').getContext('2d'), {
-                type: 'line', 
-                data: { labels: ['Jan', 'Fev', 'Mar'], datasets: [{ label: 'Dias até Fechamento', data: [15, 12, 18], borderColor: '#6f42c1', fill: false }] }, 
+                type: 'line', data: { labels: ['Jan', 'Fev', 'Mar'], datasets: [{ label: 'Dias até Fechamento', data: [15, 12, 18], borderColor: '#6f42c1', fill: false }] },
                 options: { responsive: true, maintainAspectRatio: false }
             });
         };
