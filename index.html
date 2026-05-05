@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V16.2 (Processos Dinâmicos)</title>
+    <title>Perfecta CRM - V16.3 (Uploads & Processos)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
@@ -137,7 +137,7 @@
     </div>
 
     <nav id="main-nav" style="display: none;">
-        <div class="brand">Perfecta CRM v16.2</div>
+        <div class="brand">Perfecta CRM v16.3</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
             <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
@@ -429,13 +429,6 @@
                     <button type="submit" class="btn-save" id="btn-save-lead-main">Salvar Dados Básicos</button>
                 </form>
 
-                <div id="area-arquivos" style="display:none; margin-top:20px;">
-                    <hr><h3>📁 Arquivos</h3>
-                    <input type="file" id="lead-file-input" style="display:none" onchange="handleFileUpload(this.files)">
-                    <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px;" id="btn-upload-file">+ Upload de Arquivo</button>
-                    <div id="lead-files-list"></div>
-                </div>
-
                 <div id="area-historico" style="display:none; margin-top:20px;">
                     <hr>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -491,10 +484,19 @@
 
                         <label>Resumo</label><textarea id="hist-resumo" required style="height:60px;"></textarea>
                         
+                        <!-- NOVO POSICIONAMENTO DO UPLOAD DE ARQUIVOS (ENTRE RESUMO E BOTÃO DE SALVAR) -->
+                        <div id="area-arquivos" style="display:none; margin-top:15px; margin-bottom:15px; padding:15px; background:#fdfdfd; border:1px dashed #ccc; border-radius:6px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <h4 style="margin:0; font-size:1em; color:#555;">📁 Arquivos do Lead</h4>
+                            </div>
+                            <input type="file" id="lead-file-input" style="display:none" onchange="handleFileUpload(this.files)">
+                            <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px; padding: 10px;" id="btn-upload-file">+ Upload de Arquivo</button>
+                            <div id="lead-files-list"></div>
+                        </div>
+
                         <button type="submit" class="btn-save" style="background:#17a2b8" id="btn-save-hist">+ Gravar Interação</button>
                     </form>
 
-                    <!-- FILTRO DE ETAPAS ABAIXO DO BOTÃO DE GRAVAR INTERAÇÃO -->
                     <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">
                         <label style="margin-right: 10px; margin-bottom: 0;">Filtro de Etapas:</label>
                         <select id="f-timeline-etapa" onchange="renderTimeline()" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.85em; width: auto; margin-bottom: 0;">
@@ -656,7 +658,6 @@
         </div>
     </section>
 
-    <!-- NOVA SEÇÃO DE PROCESSOS -->
     <section id="view-processos" class="view-section">
         <div class="management-container">
             <div class="form-area" style="width:400px;">
@@ -826,7 +827,6 @@
         const storage = getStorage(app);
         const auth = getAuth(app);
 
-        // Desativar DataLabels globalmente
         Chart.defaults.plugins.datalabels = { display: false };
 
         let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], listaProcessos=[], leadAtual=null, starFilters=[1,2,3,4,5];
@@ -939,22 +939,16 @@
             e.preventDefault();
             const email = document.getElementById('log-email').value;
             const pass = document.getElementById('log-pass').value;
-            
             try {
-                if (loginMode === 'login') {
-                    await signInWithEmailAndPassword(auth, email, pass);
-                } else {
-                    await createUserWithEmailAndPassword(auth, email, pass);
-                }
+                if (loginMode === 'login') await signInWithEmailAndPassword(auth, email, pass);
+                else await createUserWithEmailAndPassword(auth, email, pass);
             } catch (error) {
                 alert("Erro: " + error.message);
             }
         });
 
         window.logoutApp = async () => {
-            if(confirm("Deseja sair do sistema?")) {
-                await signOut(auth);
-            }
+            if(confirm("Deseja sair do sistema?")) await signOut(auth);
         };
 
         window.resetarSenhaUsuario = async () => {
@@ -986,9 +980,7 @@
 
         window.excluirCli = async (id) => {
             if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
-            if(confirm("Deseja realmente excluir este registro?")) {
-                await deleteDoc(doc(db, "clientes", id));
-            }
+            if(confirm("Deseja realmente excluir este registro?")) await deleteDoc(doc(db, "clientes", id));
         };
 
         window.editarAtend = (id) => {
@@ -1003,12 +995,9 @@
 
         window.excluirAtend = async (id) => {
             if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
-            if(confirm("Deseja remover este atendente da equipe?")) {
-                await deleteDoc(doc(db, "atendentes", id));
-            }
+            if(confirm("Deseja remover este atendente da equipe?")) await deleteDoc(doc(db, "atendentes", id));
         };
 
-        // --- Cadastro de Processos ---
         window.editarProcesso = (id) => {
             const p = listaProcessos.find(x => x.id === id);
             if(!p) return;
@@ -1019,26 +1008,19 @@
 
         window.excluirProcesso = async (id) => {
             if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
-            if(confirm("Deseja realmente remover este processo?")) {
-                await deleteDoc(doc(db, "processos", id));
-            }
+            if(confirm("Deseja realmente remover este processo?")) await deleteDoc(doc(db, "processos", id));
         };
 
         document.getElementById('form-processo').onsubmit = async(e) => { 
             e.preventDefault(); 
             if(!currentPerms.cadastros.gravar) return; 
-            
             const id = document.getElementById('proc-id').value;
             const nomeProc = document.getElementById('proc-nome').value.trim();
-            
             if(!nomeProc) return;
-            
             const d = { nome: nomeProc }; 
-            
             try {
                 if(id) await updateDoc(doc(db, "processos", id), d); 
                 else await addDoc(collection(db, "processos"), d); 
-                
                 document.getElementById('form-processo').reset(); 
                 document.getElementById('proc-id').value = ''; 
                 document.getElementById('btn-save-processo').innerText = "Salvar Processo";
@@ -1051,12 +1033,10 @@
             const tb = document.querySelector('#table-processos tbody');
             if(!tb || !currentPerms) return;
             tb.innerHTML = '';
-            
             if (listaProcessos.length === 0) {
                 tb.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#666;">Nenhum processo cadastrado.</td></tr>';
                 return;
             }
-
             listaProcessos.forEach(p => {
                 const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarProcesso('${p.id}')">✏️</button>` : '';
                 const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirProcesso('${p.id}')" style="color:red">🗑️</button>` : '';
@@ -1064,23 +1044,14 @@
             });
         };
 
-        // --- Função Centralizada de Controle do Botão Pós-Fechamento ---
         window.verificarBotaoPosFechamento = () => {
             const btnPos = document.getElementById('btn-pos-fechamento');
             if (!btnPos || !leadAtual) return;
-            
             if (leadAtual.etapa === 'fechado' && currentPerms && currentPerms.leads.gravar && listaProcessos.length > 0) {
                 const histExistente = leadAtual.historico || [];
                 const subsFechados = histExistente.filter(h => h.etapa === 'fechado').map(h => h.sub_etapa);
-                
-                // Exibir botão apenas se houver pelo menos 1 processo na lista que ainda não foi gerado
                 const temFaltando = listaProcessos.some(p => !subsFechados.includes(p.nome));
-                
-                if (temFaltando) {
-                    btnPos.style.display = 'block';
-                } else {
-                    btnPos.style.display = 'none';
-                }
+                btnPos.style.display = temFaltando ? 'block' : 'none';
             } else {
                 btnPos.style.display = 'none';
             }
@@ -1097,22 +1068,19 @@
             document.getElementById('btn-orcamentos').style.display = p.orcamentos.ver ? 'block' : 'none';
             document.getElementById('btn-cadastro').style.display = p.cadastros.ver ? 'block' : 'none';
             document.getElementById('btn-atendentes').style.display = p.cadastros.ver ? 'block' : 'none';
-            document.getElementById('btn-processos').style.display = p.cadastros.ver ? 'block' : 'none'; // Vinculado à permissão de cadastros
+            document.getElementById('btn-processos').style.display = p.cadastros.ver ? 'block' : 'none'; 
             document.getElementById('btn-usuarios').style.display = isAdm ? 'block' : 'none';
 
             document.getElementById('btn-novo-lead-funil').style.display = p.leads.gravar ? 'inline-block' : 'none';
             document.getElementById('btn-save-lead-main').disabled = !p.leads.gravar;
             document.getElementById('btn-save-hist').disabled = !p.leads.gravar;
             document.getElementById('btn-upload-file').disabled = !p.leads.gravar;
-            
             document.getElementById('btn-save-apontamento').disabled = !p.orcamentos.gravar;
-            
             document.getElementById('btn-save-cliente').disabled = !p.cadastros.gravar;
             document.getElementById('btn-save-atendente').disabled = !p.cadastros.gravar;
             document.getElementById('btn-save-processo').disabled = !p.cadastros.gravar;
 
-            let activeView = document.querySelector('.view-section.active').id;
-            activeView = activeView.replace('view-', '');
+            let activeView = document.querySelector('.view-section.active').id.replace('view-', '');
             let allow = true;
             if (activeView === 'funil' && !p.funil_dash.ver) allow = false;
             if (activeView === 'dashboard' && !p.funil_dash.ver_dash) allow = false;
@@ -1150,10 +1118,7 @@
                     if (!userDoc.exists() || (isMaster && userDoc.data().perfil !== 'admin')) {
                         let perms = defaultPermissoes;
                         let perfil = 'user';
-                        if (isMaster) {
-                            perms = adminPermissoes;
-                            perfil = 'admin';
-                        }
+                        if (isMaster) { perms = adminPermissoes; perfil = 'admin'; }
                         const newUserObj = { email: userEmailLower, perfil, permissoes: perms, created_at: serverTimestamp() };
                         await setDoc(doc(db, "usuarios", user.uid), newUserObj);
                         currentUser = { uid: user.uid, ...newUserObj };
@@ -1162,12 +1127,7 @@
                     }
                 } catch (error) {
                     console.warn("Falha no fallback.", error);
-                    currentUser = { 
-                        uid: user.uid, 
-                        email: userEmailLower, 
-                        perfil: isMaster ? 'admin' : 'user', 
-                        permissoes: isMaster ? adminPermissoes : defaultPermissoes 
-                    };
+                    currentUser = { uid: user.uid, email: userEmailLower, perfil: isMaster ? 'admin' : 'user', permissoes: isMaster ? adminPermissoes : defaultPermissoes };
                 }
 
                 if (isMaster || currentUser.perfil === 'admin') {
@@ -1183,7 +1143,6 @@
                 
                 aplicarPermissoesInterface();
                 iniciarListenersDeDados();
-                
             } else {
                 document.getElementById('login-overlay').style.display = 'flex';
                 document.getElementById('main-nav').style.display = 'none';
@@ -1503,9 +1462,74 @@
             if (el) el.style.display = isChecked ? 'flex' : 'none';
         };
 
-        window.handleFileUpload = async (files) => { if(!leadAtual) return alert("Salve os dados básicos antes."); const file = files[0]; if(!file) return; const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`; const storageRef = ref(storage, path); try { const snapshot = await uploadBytes(storageRef, file); const url = await getDownloadURL(snapshot.ref); const arquivos = leadAtual.arquivos || []; arquivos.push({ name: file.name, url: url, path: path }); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } catch (err) { alert("Erro no upload."); } document.getElementById('lead-file-input').value = ""; };
-        window.renderArquivos = () => { const list = document.getElementById('lead-files-list'); list.innerHTML = ""; if(!leadAtual || !leadAtual.arquivos) return; leadAtual.arquivos.forEach((file, idx) => { const btnDel = currentPerms.leads.excluir ? `<button class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red">🗑️</button>` : ''; list.innerHTML += `<div class="file-item"><a href="${file.url}" target="_blank" class="file-name">${file.name}</a>${btnDel}</div>`; }); };
-        window.excluirArquivo = async (idx) => { if(!currentPerms.leads.excluir) return; if(!confirm("Excluir?")) return; const file = leadAtual.arquivos[idx]; const storageRef = ref(storage, file.path); try { await deleteObject(storageRef); const arquivos = [...leadAtual.arquivos]; arquivos.splice(idx, 1); await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); } catch (err) { alert("Erro ao excluir."); } };
+        // --- MANIPULAÇÃO DE ARQUIVOS AVANÇADA ---
+        window.handleFileUpload = async (files) => { 
+            if(!leadAtual) return alert("Salve os dados básicos do Lead antes de anexar arquivos."); 
+            const file = files[0]; 
+            if(!file) return; 
+
+            const btnUpload = document.getElementById('btn-upload-file');
+            const originalText = btnUpload.innerText;
+            btnUpload.innerText = "Enviando... Aguarde";
+            btnUpload.disabled = true;
+
+            const path = `leads/${leadAtual.id}/${Date.now()}_${file.name}`; 
+            const storageRef = ref(storage, path); 
+
+            try { 
+                const snapshot = await uploadBytes(storageRef, file); 
+                const url = await getDownloadURL(snapshot.ref); 
+                const arquivos = leadAtual.arquivos || []; 
+                arquivos.push({ name: file.name, url: url, path: path }); 
+                
+                await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); 
+                leadAtual.arquivos = arquivos; // Atualiza local para a view renderizar
+                renderArquivos();
+                alert("Upload concluído com sucesso!");
+            } catch (err) { 
+                console.error("Falha no upload Firebase:", err);
+                alert("Erro no upload do arquivo. Detalhe: " + err.message); 
+            } finally {
+                btnUpload.innerText = originalText;
+                btnUpload.disabled = false;
+                document.getElementById('lead-file-input').value = ""; 
+            }
+        };
+
+        window.renderArquivos = () => { 
+            const list = document.getElementById('lead-files-list'); 
+            list.innerHTML = ""; 
+            if(!leadAtual || !leadAtual.arquivos || leadAtual.arquivos.length === 0) {
+                list.innerHTML = '<span style="font-size:0.85em; color:#999;">Nenhum arquivo anexado.</span>';
+                return;
+            }
+            leadAtual.arquivos.forEach((file, idx) => { 
+                const btnDel = currentPerms.leads.excluir ? `<button type="button" class="btn-icon" onclick="excluirArquivo(${idx})" style="color:red" title="Excluir Arquivo">🗑️</button>` : ''; 
+                list.innerHTML += `<div class="file-item"><a href="${file.url}" target="_blank" class="file-name" title="${file.name}">📄 ${file.name}</a>${btnDel}</div>`; 
+            }); 
+        };
+
+        window.excluirArquivo = async (idx) => { 
+            if(!currentPerms.leads.excluir) return; 
+            if(!confirm("Tem certeza que deseja excluir este arquivo permanentemente?")) return; 
+            
+            const file = leadAtual.arquivos[idx]; 
+            const storageRef = ref(storage, file.path); 
+            
+            try { 
+                await deleteObject(storageRef); 
+                const arquivos = [...leadAtual.arquivos]; 
+                arquivos.splice(idx, 1); 
+                
+                await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); 
+                leadAtual.arquivos = arquivos;
+                renderArquivos();
+            } catch (err) { 
+                console.error("Falha ao excluir:", err);
+                alert("Erro ao excluir arquivo. Detalhe: " + err.message); 
+            } 
+        };
+
         window.handleHistContato = (val) => { 
             const areaOutra = document.getElementById('area-contato-outra'); 
             areaOutra.style.display = (val === 'Outra') ? 'block' : 'none'; 
@@ -1520,8 +1544,23 @@
         window.updateHistContactDisplay = (id) => { const span = document.getElementById('info-hist-contato'); if(!id) { span.innerHTML = "Não vinculado."; return; } const item = listaClientes.find(c => c.id === id); span.innerHTML = item ? `${item.nome_empresa}<br>📞 ${item.telefone || '-'} | 📧 ${item.email || '-'}` : "Não vinculado."; };
         window.switchView = (v) => { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById('view-' + v).classList.add('active'); document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); if(v==='dashboard') processarDashboard(false); };
         window.toggleStarFilter = (s) => { const i = starFilters.indexOf(s); if(i>-1) starFilters.splice(i,1); else starFilters.push(s); renderFunnel(); };
-        window.limparFormLead = () => { document.getElementById('form-lead-main').reset(); document.getElementById('lead-id').value=''; document.getElementById('area-historico').style.display='none'; document.getElementById('area-arquivos').style.display='none'; leadAtual=null; document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); };
-        window.limparFormHist = () => { document.getElementById('form-historico').reset(); document.getElementById('hist-index').value=''; document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; document.getElementById('info-hist-contato').innerText = ""; document.getElementById('area-contato-outra').style.display = "none"; };
+        
+        window.limparFormLead = () => { 
+            document.getElementById('form-lead-main').reset(); 
+            document.getElementById('lead-id').value=''; 
+            document.getElementById('area-historico').style.display='none'; 
+            leadAtual=null; 
+            document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); 
+        };
+        
+        window.limparFormHist = () => { 
+            document.getElementById('form-historico').reset(); 
+            document.getElementById('hist-index').value=''; 
+            document.getElementById('btn-save-hist').innerText = "+ Gravar Interação"; 
+            document.getElementById('info-hist-contato').innerText = ""; 
+            document.getElementById('area-contato-outra').style.display = "none"; 
+        };
+        
         window.excluirLead = async(id) => { if(!currentPerms.leads.excluir) return; if(confirm("Excluir Lead?")) await deleteDoc(doc(db,"leads",id)); };
         window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
         
@@ -1545,7 +1584,7 @@
             document.getElementById('lead-rt').value = leadAtual.rt || '';
             
             document.getElementById('area-historico').style.display = 'block'; 
-            document.getElementById('area-arquivos').style.display = 'block'; 
+            document.getElementById('area-arquivos').style.display = 'block'; // Fica visível dentro do form
             
             if (document.getElementById('f-timeline-etapa')) {
                 document.getElementById('f-timeline-etapa').value = "todos";
