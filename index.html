@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfecta CRM - V16.3 (Uploads & Processos)</title>
+    <title>Perfecta CRM - V16.4 (Upload Histórico & Processo Restrito)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
@@ -31,6 +31,7 @@
 
         label { font-weight: 600; font-size: 0.85em; display: block; margin-bottom: 4px; color: #555; }
         input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        input[type="checkbox"] { width: auto; margin-right: 8px; margin-bottom: 0; }
         
         .contact-info-display { font-size: 0.75em; color: #007bff; margin-top: -10px; margin-bottom: 10px; display: block; min-height: 1em; }
 
@@ -137,7 +138,7 @@
     </div>
 
     <nav id="main-nav" style="display: none;">
-        <div class="brand">Perfecta CRM v16.3</div>
+        <div class="brand">Perfecta CRM v16.4</div>
         <div class="nav-buttons">
             <button onclick="switchView('funil')" id="btn-funil" class="active">📊 Funil</button>
             <button onclick="switchView('orcamentos')" id="btn-orcamentos">🕐 Orçamentos</button>
@@ -311,8 +312,8 @@
                         </div>
                     </div>
                     <div class="filter-check-group">
-                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-start" onchange="renderTableOrcamentos()" style="width: auto; margin-right: 8px;"> Início não apontado</label>
-                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-end" onchange="renderTableOrcamentos()" style="width: auto; margin-right: 8px;"> Fim não apontado</label>
+                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-start" onchange="renderTableOrcamentos()"> Início não apontado</label>
+                        <label style="font-size: 1.5em;"><input type="checkbox" id="f-orc-no-end" onchange="renderTableOrcamentos()"> Fim não apontado</label>
                     </div>
                 </div>
 
@@ -429,6 +430,16 @@
                     <button type="submit" class="btn-save" id="btn-save-lead-main">Salvar Dados Básicos</button>
                 </form>
 
+                <div id="area-arquivos" style="display:none; margin-top:20px;">
+                    <hr>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h3 style="margin:0;">📁 Arquivos (Gerais do Lead)</h3>
+                    </div>
+                    <input type="file" id="lead-file-input-main" style="display:none" onchange="handleFileUpload(this.files)">
+                    <button type="button" onclick="document.getElementById('lead-file-input-main').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px;" id="btn-upload-file-main">+ Upload de Arquivo</button>
+                    <div id="lead-files-list"></div>
+                </div>
+
                 <div id="area-historico" style="display:none; margin-top:20px;">
                     <hr>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -484,19 +495,10 @@
 
                         <label>Resumo</label><textarea id="hist-resumo" required style="height:60px;"></textarea>
                         
-                        <!-- NOVO POSICIONAMENTO DO UPLOAD DE ARQUIVOS (ENTRE RESUMO E BOTÃO DE SALVAR) -->
-                        <div id="area-arquivos" style="display:none; margin-top:15px; margin-bottom:15px; padding:15px; background:#fdfdfd; border:1px dashed #ccc; border-radius:6px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <h4 style="margin:0; font-size:1em; color:#555;">📁 Arquivos do Lead</h4>
-                            </div>
-                            <input type="file" id="lead-file-input" style="display:none" onchange="handleFileUpload(this.files)">
-                            <button type="button" onclick="document.getElementById('lead-file-input').click()" class="btn-save" style="background:#6c757d; margin-bottom:10px; padding: 10px;" id="btn-upload-file">+ Upload de Arquivo</button>
-                            <div id="lead-files-list"></div>
-                        </div>
-
                         <button type="submit" class="btn-save" style="background:#17a2b8" id="btn-save-hist">+ Gravar Interação</button>
                     </form>
 
+                    <!-- FILTRO DE ETAPAS -->
                     <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 15px; padding-bottom: 5px; border-bottom: 1px solid #eee;">
                         <label style="margin-right: 10px; margin-bottom: 0;">Filtro de Etapas:</label>
                         <select id="f-timeline-etapa" onchange="renderTimeline()" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.85em; width: auto; margin-bottom: 0;">
@@ -510,6 +512,9 @@
                             <option value="perdido">Perdido</option>
                         </select>
                     </div>
+
+                    <!-- Input global oculto para upload nos históricos -->
+                    <input type="file" id="hist-file-input" style="display:none" onchange="handleHistFileUpload(this.files)">
 
                     <div id="timeline-list" style="margin-top:15px;"></div>
                 </div>
@@ -662,12 +667,17 @@
         <div class="management-container">
             <div class="form-area" style="width:400px;">
                 <h2>Cadastro de Processo</h2>
-                <p style="font-size: 0.85em; color: #666; margin-top: 0;">Cadastre os nomes dos processos que serão utilizados na geração de históricos pós-fechamento.</p>
+                <p style="font-size: 0.85em; color: #666; margin-top: 0;">Cadastre os processos que serão utilizados nos históricos pós-fechamento.</p>
                 <form id="form-processo">
                     <input type="hidden" id="proc-id">
                     <label>Nome do Processo *</label>
                     <input type="text" id="proc-nome" required placeholder="Ex: Contrato, Visitas Técnicas, etc.">
-                    <button type="submit" class="btn-save" id="btn-save-processo">Salvar Processo</button>
+                    
+                    <label style="display:flex; align-items:center; margin-top:10px; cursor:pointer;">
+                        <input type="checkbox" id="proc-restrito"> Restrito ao Master
+                    </label>
+
+                    <button type="submit" class="btn-save" id="btn-save-processo" style="margin-top:10px;">Salvar Processo</button>
                 </form>
             </div>
             <div class="list-area">
@@ -834,6 +844,7 @@
         let leadSortAsc = false;
         
         let biFilters = { origem: null, data: null, status: null };
+        let currentHistUploadIndex = -1; // Variável para controlar o upload do histórico
         
         let currentUser = null;
         let currentPerms = null;
@@ -998,11 +1009,13 @@
             if(confirm("Deseja remover este atendente da equipe?")) await deleteDoc(doc(db, "atendentes", id));
         };
 
+        // --- Cadastro de Processos ---
         window.editarProcesso = (id) => {
             const p = listaProcessos.find(x => x.id === id);
             if(!p) return;
             document.getElementById('proc-id').value = id;
             document.getElementById('proc-nome').value = p.nome || "";
+            document.getElementById('proc-restrito').checked = p.restrito_master || false;
             document.getElementById('btn-save-processo').innerText = "Atualizar Processo";
         };
 
@@ -1016,8 +1029,11 @@
             if(!currentPerms.cadastros.gravar) return; 
             const id = document.getElementById('proc-id').value;
             const nomeProc = document.getElementById('proc-nome').value.trim();
+            const restrito = document.getElementById('proc-restrito').checked;
+            
             if(!nomeProc) return;
-            const d = { nome: nomeProc }; 
+            const d = { nome: nomeProc, restrito_master: restrito }; 
+            
             try {
                 if(id) await updateDoc(doc(db, "processos", id), d); 
                 else await addDoc(collection(db, "processos"), d); 
@@ -1038,9 +1054,10 @@
                 return;
             }
             listaProcessos.forEach(p => {
+                const masterTag = p.restrito_master ? `<span style="font-size:0.7em; background:#dc3545; color:white; padding:2px 4px; border-radius:3px; margin-left:5px;">Restrito</span>` : '';
                 const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarProcesso('${p.id}')">✏️</button>` : '';
                 const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirProcesso('${p.id}')" style="color:red">🗑️</button>` : '';
-                tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarProcesso('${p.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${p.nome}</td><td style="text-align:center;">${btnEdit} ${btnDel}</td></tr>`;
+                tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarProcesso('${p.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${p.nome} ${masterTag}</td><td style="text-align:center;">${btnEdit} ${btnDel}</td></tr>`;
             });
         };
 
@@ -1074,7 +1091,7 @@
             document.getElementById('btn-novo-lead-funil').style.display = p.leads.gravar ? 'inline-block' : 'none';
             document.getElementById('btn-save-lead-main').disabled = !p.leads.gravar;
             document.getElementById('btn-save-hist').disabled = !p.leads.gravar;
-            document.getElementById('btn-upload-file').disabled = !p.leads.gravar;
+            document.getElementById('btn-upload-file-main').disabled = !p.leads.gravar;
             document.getElementById('btn-save-apontamento').disabled = !p.orcamentos.gravar;
             document.getElementById('btn-save-cliente').disabled = !p.cadastros.gravar;
             document.getElementById('btn-save-atendente').disabled = !p.cadastros.gravar;
@@ -1391,6 +1408,64 @@
             document.getElementById('form-historico').scrollIntoView({ behavior: 'smooth' }); 
         };
 
+        // --- MANIPULAÇÃO DE UPLOAD DOS HISTÓRICOS ---
+        window.abrirUploadHist = (idx) => {
+            currentHistUploadIndex = idx;
+            document.getElementById('hist-file-input').click();
+        };
+
+        window.handleHistFileUpload = async (files) => {
+            if(!leadAtual || currentHistUploadIndex === -1) return;
+            const file = files[0];
+            if(!file) return;
+
+            document.body.style.cursor = 'wait'; // Feedback visual de espera
+            const path = `leads/${leadAtual.id}/hist_${currentHistUploadIndex}_${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, path);
+
+            try {
+                const snapshot = await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(snapshot.ref);
+                
+                let hist = [...leadAtual.historico];
+                if (!hist[currentHistUploadIndex].arquivos) {
+                    hist[currentHistUploadIndex].arquivos = [];
+                }
+                hist[currentHistUploadIndex].arquivos.push({ name: file.name, url: url, path: path });
+                
+                await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist });
+                leadAtual.historico = hist; // Atualiza view
+                renderTimeline();
+                alert("Arquivo anexado ao histórico com sucesso!");
+            } catch (err) {
+                console.error("Falha no upload Firebase:", err);
+                alert("Erro no upload do arquivo. Detalhe: " + err.message);
+            } finally {
+                document.body.style.cursor = 'default';
+                document.getElementById('hist-file-input').value = "";
+                currentHistUploadIndex = -1;
+            }
+        };
+
+        window.excluirArquivoHist = async (histIdx, aIdx) => {
+            if(!currentPerms.leads.excluir) return;
+            if(!confirm("Excluir este anexo permanentemente?")) return;
+            
+            const file = leadAtual.historico[histIdx].arquivos[aIdx];
+            const storageRef = ref(storage, file.path);
+            
+            try {
+                await deleteObject(storageRef);
+                let hist = [...leadAtual.historico];
+                hist[histIdx].arquivos.splice(aIdx, 1);
+                await updateDoc(doc(db, "leads", leadAtual.id), { historico: hist });
+                leadAtual.historico = hist;
+                renderTimeline();
+            } catch (err) {
+                alert("Erro ao excluir: " + err.message);
+            }
+        };
+
         window.renderTimeline = () => { 
             const div = document.getElementById('timeline-list'); 
             div.innerHTML = ''; 
@@ -1400,6 +1475,16 @@
             
             hArray.reverse().forEach((h, indexInTimeline) => { 
                 if (fTimeline !== 'todos' && h.etapa !== fTimeline) return; 
+
+                // Lógica de Visibilidade: Restrito ao Master
+                let skipRender = false;
+                if (h.etapa === 'fechado' && h.sub_etapa) {
+                    const procInfo = listaProcessos.find(p => p.nome === h.sub_etapa);
+                    if (procInfo && procInfo.restrito_master && currentUser && currentUser.perfil !== 'admin') {
+                        skipRender = true; // Se é restrito e user não é admin, não exibe.
+                    }
+                }
+                if (skipRender) return;
 
                 const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo Histórico">➕</button>` : '';
                 let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
@@ -1417,12 +1502,25 @@
                         }
                     }
                 }
+                
+                const btnUploadHist = currentPerms.leads.gravar ? `<button type="button" class="btn-icon" onclick="abrirUploadHist(${h.idx})" title="Anexar Arquivo a este Histórico">📎</button>` : '';
                 const btnEdit = currentPerms.leads.gravar ? `<button class="btn-icon" onclick="editHist(${h.idx})">✏️</button>` : '';
                 const btnDel = currentPerms.leads.excluir ? `<button class="btn-del-hist" onclick="delHist(${h.idx})">🗑️</button>` : '';
                 
                 const displayEtapa = h.sub_etapa ? `${h.etapa} - ${h.sub_etapa}` : h.etapa;
 
-                div.innerHTML += `<div class="timeline-item"><div class="seq-badge">${h.idx + 1}</div><div class="tl-header"><span class="stage-tag" style="text-transform:uppercase;">${displayEtapa}</span><div>${btnEdit}${btnNovo}${btnDel}</div></div><span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br><span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 🏁 Status: ${h.resultado || '-'}</span><div onclick="if(${currentPerms.leads.gravar}) editHist(${h.idx})" style="cursor:${currentPerms.leads.gravar?'pointer':'default'}; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div>${orcIntegrationHtml}</div>`; 
+                // Renderiza HTML dos anexos deste histórico
+                let anexosHtml = '';
+                if (h.arquivos && h.arquivos.length > 0) {
+                    anexosHtml += `<div style="margin-top:8px; padding:6px; background:#f5f7f9; border-radius:4px; border:1px dashed #ccc;">`;
+                    h.arquivos.forEach((arq, aIdx) => {
+                        const btnDelArq = currentPerms.leads.excluir ? `<button type="button" class="btn-icon" onclick="excluirArquivoHist(${h.idx}, ${aIdx})" style="color:red; font-size:0.9em; padding:2px;" title="Excluir Anexo">🗑️</button>` : '';
+                        anexosHtml += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.85em;"><a href="${arq.url}" target="_blank" style="text-decoration:none; color:var(--primary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:85%;">📎 ${arq.name}</a> ${btnDelArq}</div>`;
+                    });
+                    anexosHtml += `</div>`;
+                }
+
+                div.innerHTML += `<div class="timeline-item"><div class="seq-badge">${h.idx + 1}</div><div class="tl-header"><span class="stage-tag" style="text-transform:uppercase;">${displayEtapa}</span><div>${btnUploadHist}${btnEdit}${btnNovo}${btnDel}</div></div><span style="font-size:0.8em; color:var(--primary); font-weight:bold;">👤 ${h.atendente}</span><br><span style="font-size:0.75em; color:#666">📞 Contato: ${h.contato_tipo || 'N/A'} ${btnWhats} | 🏁 Status: ${h.resultado || '-'}</span><div onclick="if(${currentPerms.leads.gravar}) editHist(${h.idx})" style="cursor:${currentPerms.leads.gravar?'pointer':'default'}; margin-top:5px;"><b>Prog:</b> ${formatBR(h.data_programada)} | <b>Real:</b> ${formatBR(h.data_realizada)} <span style="color:#ffc107">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span><br><i>${h.resumo}</i></div>${anexosHtml}${orcIntegrationHtml}</div>`; 
             }); 
         };
 
@@ -1462,13 +1560,13 @@
             if (el) el.style.display = isChecked ? 'flex' : 'none';
         };
 
-        // --- MANIPULAÇÃO DE ARQUIVOS AVANÇADA ---
+        // --- MANIPULAÇÃO DE ARQUIVOS (GERAIS DO LEAD) ---
         window.handleFileUpload = async (files) => { 
             if(!leadAtual) return alert("Salve os dados básicos do Lead antes de anexar arquivos."); 
             const file = files[0]; 
             if(!file) return; 
 
-            const btnUpload = document.getElementById('btn-upload-file');
+            const btnUpload = document.getElementById('btn-upload-file-main');
             const originalText = btnUpload.innerText;
             btnUpload.innerText = "Enviando... Aguarde";
             btnUpload.disabled = true;
@@ -1483,7 +1581,7 @@
                 arquivos.push({ name: file.name, url: url, path: path }); 
                 
                 await updateDoc(doc(db, "leads", leadAtual.id), { arquivos: arquivos }); 
-                leadAtual.arquivos = arquivos; // Atualiza local para a view renderizar
+                leadAtual.arquivos = arquivos; 
                 renderArquivos();
                 alert("Upload concluído com sucesso!");
             } catch (err) { 
@@ -1492,7 +1590,7 @@
             } finally {
                 btnUpload.innerText = originalText;
                 btnUpload.disabled = false;
-                document.getElementById('lead-file-input').value = ""; 
+                document.getElementById('lead-file-input-main').value = ""; 
             }
         };
 
@@ -1500,7 +1598,7 @@
             const list = document.getElementById('lead-files-list'); 
             list.innerHTML = ""; 
             if(!leadAtual || !leadAtual.arquivos || leadAtual.arquivos.length === 0) {
-                list.innerHTML = '<span style="font-size:0.85em; color:#999;">Nenhum arquivo anexado.</span>';
+                list.innerHTML = '<span style="font-size:0.85em; color:#999;">Nenhum arquivo geral anexado ao lead.</span>';
                 return;
             }
             leadAtual.arquivos.forEach((file, idx) => { 
@@ -1549,6 +1647,7 @@
             document.getElementById('form-lead-main').reset(); 
             document.getElementById('lead-id').value=''; 
             document.getElementById('area-historico').style.display='none'; 
+            document.getElementById('area-arquivos').style.display='none';
             leadAtual=null; 
             document.querySelectorAll('.contact-info-display').forEach(s => s.innerText = ""); 
         };
@@ -1584,7 +1683,7 @@
             document.getElementById('lead-rt').value = leadAtual.rt || '';
             
             document.getElementById('area-historico').style.display = 'block'; 
-            document.getElementById('area-arquivos').style.display = 'block'; // Fica visível dentro do form
+            document.getElementById('area-arquivos').style.display = 'block'; 
             
             if (document.getElementById('f-timeline-etapa')) {
                 document.getElementById('f-timeline-etapa').value = "todos";
@@ -1597,20 +1696,35 @@
         document.getElementById('form-historico').onsubmit = async(e) => {
             e.preventDefault(); if(!currentPerms.leads.gravar) return;
             const idx = document.getElementById('hist-index').value;
-            const h = { atendente: document.getElementById('hist-atendente').value, contato_tipo: document.getElementById('hist-contato-tipo').value, contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "", etapa: document.getElementById('hist-etapa').value, data_programada: document.getElementById('hist-prog').value, data_realizada: document.getElementById('hist-real').value, resultado: document.getElementById('hist-resultado').value, resumo: document.getElementById('hist-resumo').value, temperatura: document.getElementById('hist-temp').value, data_operacao: new Date().toLocaleString('pt-BR') };
+            const h = { 
+                atendente: document.getElementById('hist-atendente').value, 
+                contato_tipo: document.getElementById('hist-contato-tipo').value, 
+                contato_id: (document.getElementById('hist-contato-tipo').value === 'Outra') ? document.getElementById('hist-contato-id').value : "", 
+                etapa: document.getElementById('hist-etapa').value, 
+                data_programada: document.getElementById('hist-prog').value, 
+                data_realizada: document.getElementById('hist-real').value, 
+                resultado: document.getElementById('hist-resultado').value, 
+                resumo: document.getElementById('hist-resumo').value, 
+                temperatura: document.getElementById('hist-temp').value, 
+                data_operacao: new Date().toLocaleString('pt-BR') 
+            };
+            
             if (h.etapa !== 'novo' && !h.temperatura) { alert("Classificação estrelas obrigatória."); return; }
             if (h.data_realizada && !h.resultado) { alert("Resultado é obrigatório."); return; }
+            
             let hist = [...(leadAtual.historico || [])];
             
             if(idx !== "") { 
                 h.sub_etapa = hist[parseInt(idx)].sub_etapa || ""; 
+                h.arquivos = hist[parseInt(idx)].arquivos || []; // Preserva os arquivos do histórico ao editar!
                 h.updated_realizada_at = (hist[parseInt(idx)].data_realizada !== h.data_realizada) ? new Date().toLocaleString('pt-BR') : (hist[parseInt(idx)].updated_realizada_at || '-'); 
                 hist[parseInt(idx)] = h; 
             } else { 
+                h.arquivos = []; // Histórico novo nasce com array vazio
                 h.updated_realizada_at = h.data_realizada ? new Date().toLocaleString('pt-BR') : '-'; 
                 hist.push(h); 
                 if (h.data_realizada && h.resultado === "Insucesso") { 
-                    hist.push({ ...h, data_realizada: "", resultado: "", data_operacao: new Date().toLocaleString('pt-BR'), updated_realizada_at: '-', resumo: "REAGENDAMENTO: " + h.resumo }); 
+                    hist.push({ ...h, arquivos: [], data_realizada: "", resultado: "", data_operacao: new Date().toLocaleString('pt-BR'), updated_realizada_at: '-', resumo: "REAGENDAMENTO: " + h.resumo }); 
                 } 
             }
             
@@ -1625,9 +1739,17 @@
 
         window.delHist = async (i) => { 
             if(!currentPerms.leads.excluir) return; 
-            if(!confirm("Excluir?")) return; 
+            if(!confirm("Excluir este histórico? Os anexos vinculados a ele também serão perdidos.")) return; 
             
             let hist = [...leadAtual.historico]; 
+            
+            // Exclusão física dos arquivos do storage caso existam neste histórico
+            if(hist[i].arquivos && hist[i].arquivos.length > 0) {
+                for(let file of hist[i].arquivos) {
+                    try { await deleteObject(ref(storage, file.path)); } catch(e) { console.warn("Erro ao apagar arquivo orfão:", e); }
+                }
+            }
+
             hist.splice(i, 1); 
             const ultEtapa = hist.length ? hist[hist.length-1].etapa : 'novo'; 
             
@@ -1660,8 +1782,9 @@
                             <input type="checkbox" value="${proc.nome}" checked disabled style="width:auto; margin:0;"> <del>${proc.nome}</del> <i style="font-size:0.85em; margin-left:auto;">(Já gerado)</i>
                         </label>`;
                     } else {
+                        const tagMaster = proc.restrito_master ? `<span style="font-size:0.7em; background:#dc3545; color:white; padding:2px 4px; border-radius:3px; margin-left:5px;">Restrito</span>` : '';
                         chkHtml = `<label style="display:flex; align-items:center; gap:8px; padding:8px; cursor:pointer; border-bottom:1px solid #eee; font-weight:500; color:var(--primary); margin:0;">
-                            <input type="checkbox" class="chk-proc-pos" value="${proc.nome}" style="width:auto; margin:0;"> <span>${proc.nome}</span>
+                            <input type="checkbox" class="chk-proc-pos" value="${proc.nome}" style="width:auto; margin:0;"> <span>${proc.nome} ${tagMaster}</span>
                         </label>`;
                     }
                     container.innerHTML += chkHtml;
@@ -1693,6 +1816,7 @@
                     contato_id: "",
                     etapa: "fechado",
                     sub_etapa: chk.value,
+                    arquivos: [], // Inicia com lista de arquivos vazia
                     data_programada: "",
                     data_realizada: "",
                     resultado: "",
