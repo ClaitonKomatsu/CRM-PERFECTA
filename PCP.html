@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfecta PCP - Produção</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1b2a47; --bg: #f4f6f9; --text: #333; --accent: #20c997;
+            --pvc: #007bff; --alu: #fd7e14; --success: #28a745;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+        
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(27, 42, 71, 0.95); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        
+        nav { background: var(--primary); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; color: white; }
+        .brand { font-weight: bold; font-size: 1.2rem; }
+        .nav-buttons { display: flex; flex: 1; margin-left: 20px; gap: 10px; }
+        .nav-buttons button { background: transparent; border: none; padding: 10px 15px; cursor: pointer; color: rgba(255,255,255,0.7); font-size: 0.95rem; border-bottom: 3px solid transparent; }
+        .nav-buttons button.active { color: white; border-bottom-color: var(--accent); font-weight: bold; }
+        
+        .view-section { display: none; flex: 1; overflow: hidden; padding: 20px; }
+        .view-section.active { display: flex; flex-direction: column; }
+        
+        .split-layout { display: flex; gap: 20px; height: 100%; }
+        .form-area { width: 350px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .list-area { flex: 1; background: white; padding: 20px; border-radius: 8px; overflow-y: auto; }
+        
+        label { font-weight: 600; font-size: 0.85em; display: block; margin-bottom: 4px; color: #555; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        
+        .btn-save { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f1f3f5; text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
+        td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+        
+        .process-card { background: white; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
+        .card-pvc { border-left: 5px solid var(--pvc); }
+        .card-alu { border-left: 5px solid var(--alu); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+        .stage-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; background: #e9ecef; color: #495057; text-transform: uppercase; }
+        
+        /* Semáforo e Tooltip de Prazos */
+        .semaforo-container { display: flex; align-items: center; gap: 8px; position: relative; }
+        .semaforo-dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: help; }
+        .semaforo-dot.vermelho { background-color: #dc3545; animation: pulse-red 2s infinite; }
+        .semaforo-dot.amarelo { background-color: #ffc107; }
+        .semaforo-dot.verde { background-color: #28a745; }
+        .semaforo-dot[data-tooltip]:hover::after {
+            content: attr(data-tooltip); position: absolute; right: 0; top: 24px; background: rgba(0,0,0,0.85); color: #fff;
+            padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; white-space: pre; z-index: 10; line-height: 1.4; box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .history-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; background: #f8f9fa; padding: 10px; border-radius: 6px; font-size: 0.75rem; color: #555; }
+        .history-col { border-right: 1px solid #e0e0e0; padding-right: 5px; display: flex; flex-direction: column; justify-content: space-between; min-height: 160px; }
+        .history-col:last-child { border-right: none; }
+        .history-title { font-weight: bold; color: var(--primary); margin-bottom: 5px; border-bottom: 1px solid #ddd; padding-bottom: 2px; text-transform: uppercase; }
+        .history-dates { font-size: 0.72rem; color: #666; margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 4px; line-height: 1.3; }
+        
+        .btn-manage-stage { display: block; width: 100%; margin-top: auto; padding: 4px 6px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; text-align: center; margin-bottom: 4px; }
+        .btn-manage-stage:hover { opacity: 0.9; }
+        .btn-view-stage { display: block; width: 100%; padding: 4px 6px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; text-align: center; }
+        .btn-view-stage:hover { opacity: 0.9; }
+        
+        dialog { border: none; border-radius: 8px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 950px; max-width: 98%; }
+        dialog::backdrop { background: rgba(0,0,0,0.5); }
+        
+        .material-box-container { display: flex; flex-direction: column; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .mat-box-lista { background-color: #fff0f6 !important; border-left: 6px solid #d6336c !important; }
+        .mat-box-compra { background-color: #fff4e6 !important; border-left: 6px solid #f76707 !important; }
+        .mat-box-recebimento { background-color: #eaf4ff !important; border-left: 6px solid #007bff !important; }
+        .mat-box-producao { background-color: #ebfbee !important; border-left: 6px solid #37b24d !important; }
+        
+        .material-row-top { display: flex; gap: 8px; align-items: center; width: 100%; flex-wrap: nowrap; margin-bottom: 8px; }
+        .material-audit-grid { width: 100%; display: grid; gap: 10px; font-size: 0.78rem; color: #444; background: rgba(255,255,255,0.6); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.04); box-sizing: border-box; }
+        .grid-3-cols { grid-template-columns: repeat(3, 1fr); }
+        .grid-2-cols { grid-template-columns: repeat(2, 1fr); }
+        .audit-item { display: flex; flex-direction: column; line-height: 1.3; }
+        .audit-item b { color: #2b3a4a; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 1px; }
+        
+        .input-pct { width: 65px; margin-bottom: 0; text-align: center; }
+        .input-obs { flex: 1; margin-bottom: 0; min-width: 120px; }
+        .input-date-inline { width: 130px; margin-bottom: 0; padding: 5px; font-size: 0.85em; }
+        .sel-resp-inline { width: 140px; margin-bottom: 0; padding: 6px; font-size: 0.85em; }
+        .btn-inline-fase { padding: 8px 12px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; font-weight: bold; white-space: nowrap; }
+        .btn-del-mat-line { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 1.1em; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-del-mat-line:hover { color: #bd2130; transform: scale(1.1); }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .chart-box { background: white; padding: 15px; border-radius: 8px; height: 300px; }
+        .full-box { grid-column: 1 / -1; height: auto; min-height: 200px; }
+        
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 15px; background: white; padding: 15px; border-radius: 8px; flex-wrap: wrap; align-items: flex-end; }
+        
+        .structural-fields-box { display: flex; gap: 15px; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; margin-top: 8px; }
+        .structural-fields-box div { flex: 1; }
+        .structural-fields-box label { font-weight: bold; color: var(--primary); }
+        .structural-fields-box input { margin-bottom: 0; }
+
+        .prod-layout-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; background: #fff; border-radius: 6px; overflow: hidden; }
+        .prod-layout-table td { padding: 12px 15px; vertical-align: middle; border-bottom: 1px solid #eee; }
+        .prod-layout-label { font-size: 1.05rem; font-weight: 500; color: #333; width: 150px; }
+        .prod-layout-input-cell { display: flex; align-items: center; gap: 10px; width: 280px; }
+        .prod-layout-input-cell input { width: 80px; margin-bottom: 0; text-align: center; font-size: 1.1em; font-weight: bold; padding: 6px; }
+        .prod-layout-input-cell span { font-size: 0.95rem; color: #666; font-weight: 500; }
+        .prod-layout-badge-cell { text-align: right; }
+        .prod-layout-badge-container { background: #f1f3f5; border-radius: 4px; padding: 6px 16px; display: inline-flex; flex-direction: column; align-items: center; min-width: 90px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
+        .prod-layout-badge-title { font-size: 0.68rem; font-weight: bold; color: #777; letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase; }
+        .prod-layout-badge-value { font-size: 1.3em; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="form-area">
+            <h2 style="text-align:center; color:var(--primary); margin-top:0;">PCP Login</h2>
+            <form id="form-login">
+                <label>E-mail</label><input type="email" id="log-email" required>
+                <label>Senha</label><input type="password" id="log-pass" required minlength="6">
+                <button type="submit" class="btn-save" style="background:var(--primary)">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <nav id="main-nav" style="display: none;">
+        <div class="brand">🏭 PCP Perfecta</div>
+        <div class="nav-buttons">
+            <button onclick="switchView('gestao')" id="btn-gestao" class="active">📋 Gestão de Production</button>
+            <button onclick="switchView('materiais')" id="btn-materiais">📦 Cadastro de Materiais</button>
+            <button onclick="switchView('dashboard')" id="btn-dashboard">📈 Dashboard</button>
+        </div>
+        <div style="font-size:0.85em; color: white;">
+            <span id="user-info"></span> | <a href="#" onclick="logoutApp()" style="color:#ffc107; font-weight: bold; text-decoration: none;">Sair</a>
+        </div>
+    </nav>
+
+    <section id="view-materiais" class="view-section">
+        <div class="split-layout">
+            <div class="form-area">
+                <h2>Novo Material</h2>
+                <form id="form-material">
+                    <input type="hidden" id="mat-id">
+                    <label>Descrição do Material *</label>
+                    <input type="text" id="mat-desc" required placeholder="Ex: Perfil de Alumínio">
+                    <button type="submit" class="btn-save">Salvar Material</button>
+                </form>
+            </div>
+            <div class="list-area">
+                <h2>Materiais Cadastrados</h2>
+                <table>
+                    <thead><tr><th>Descrição</th><th style="width:80px;">Ações</th></tr></thead>
+                    <tbody id="tb-materiais"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-gestao" class="view-section active">
+        <div class="filter-bar">
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Filtrar Tipo:</label>
+                <select id="f-tipo" onchange="renderProcessos()" style="width:auto; margin:0;"><option value="todos">Todos</option><option value="PVC">PVC</option><option value="ALUMÍNIO">Alumínio</option></select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Etapa do Processo:</label>
+                <select id="f-etapa" onchange="renderProcessos()" style="width:auto; margin:0;">
+                    <option value="ativos">Todas Ativas</option>
+                    <option value="todos">TODAS (Incluindo Concluídas)</option>
+                    <option value="LISTA">Lista</option>
+                    <option value="COMPRA">Compra</option>
+                    <option value="RECEBIMENTO">Recebimento</option>
+                    <option value="PRODUCAO">Produção</option>
+                    <option value="CONCLUIDO">Concluídos</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Filtrar por Responsável:</label>
+                <select id="f-resp" onchange="renderProcessos()" style="width:180px; margin:0;"><option value="todos">Todos os Responsáveis</option></select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Status do Responsável:</label>
+                <select id="f-status-resp" onchange="renderProcessos()" style="width:auto; margin:0;">
+                    <option value="todos">Todos (Pend. / Concl.)</option>
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="CONCLUIDO">Concluído</option>
+                </select>
+            </div>
+        </div>
+        <div class="list-area" id="processos-container" style="background:transparent; padding:0;"></div>
+    </section>
+
+    <section id="view-dashboard" class="view-section">
+        <div class="filter-bar">
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Filtrar Tipo:</label>
+                <select id="db-f-tipo" onchange="renderDashboard()" style="width:auto; margin:0;"><option value="todos">Todos</option><option value="PVC">PVC</option><option value="ALUMÍNIO">Alumínio</option></select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Etapa do Processo:</label>
+                <select id="db-f-etapa" onchange="renderDashboard()" style="width:auto; margin:0;">
+                    <option value="ativos">Todas Ativas</option>
+                    <option value="todos">TODAS (Incluindo Concluídas)</option>
+                    <option value="LISTA">Lista</option>
+                    <option value="COMPRA">Compra</option>
+                    <option value="RECEBIMENTO">Recebimento</option>
+                    <option value="PRODUCAO">Produção</option>
+                    <option value="CONCLUIDO">Concluídos</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Filtrar por Responsável:</label>
+                <select id="db-f-resp" onchange="renderDashboard()" style="width:180px; margin:0;"><option value="todos">Todos os Responsáveis</option></select>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Status do Responsável:</label>
+                <select id="db-f-status-resp" onchange="renderDashboard()" style="width:auto; margin:0;">
+                    <option value="todos">Todos (Pend. / Concl.)</option>
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="CONCLUIDO">Concluído</option>
+                </select>
+            </div>
+        </div>
+        <div class="dashboard-grid" style="flex:1; overflow-y:auto; margin-top:15px; padding-right:5px;">
+            <div class="chart-box">
+                <h3 style="text-align:center; margin-top:0;">Obras por Etapa</h3>
+                <canvas id="chartEtapas"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3 style="text-align:center; margin-top:0;">Volume PVC vs Alumínio (Filtrados)</h3>
+                <canvas id="chartTipos"></canvas>
+            </div>
+            <div class="chart-box full-box" style="overflow-y: auto;">
+                <h3 style="text-align:center; margin-top:0;">Prazo Limite de Produção (70 dias após Medição)</h3>
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background:#f1f3f5;">
+                            <th style="padding:8px;">Cliente</th>
+                            <th style="padding:8px;">Tipo</th>
+                            <th style="padding:8px;">Medição Base</th>
+                            <th style="padding:8px;">Prazo Limite</th>
+                            <th style="padding:8px;">Dias Restantes</th>
+                            <th style="padding:8px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tb-prazos"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="view-usuarios" class="view-section" style="display:none;"></section>
+
+    <dialog id="dialog-processo">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0;" id="mod-titulo">Gerenciar Processo</h3>
+            <button onclick="fecharModal()" style="border:none; background:none; font-size:1.5em; cursor:pointer;">&times;</button>
+        </div>
+        <div style="background:#f8f9fa; padding:10px; border-radius:6px; margin-bottom:15px; font-size:0.9em;">
+            <b>Cliente:</b> <span id="mod-cli"></span> | <b>Tipo:</b> <span id="mod-tipo"></span><br>
+            <b>Medição:</b> <span id="mod-medicao"></span> | <b>Peças Totais da Obra:</b> <span id="mod-pecas"></span>
+            
+            <div class="structural-fields-box">
+                <div>
+                    <label>Qtd MARCOS</label>
+                    <input type="number" min="0" id="mod-structural-marcos" onchange="window.salvarEstruturaisGlobais()">
+                </div>
+                <div>
+                    <label>Qtd FOLHAS</label>
+                    <input type="number" min="0" id="mod-structural-folhas" onchange="window.salvarEstruturaisGlobais()">
+                </div>
+            </div>
+
+            <div style="margin-top:8px; border-top:1px dashed #ddd; padding-top:8px;" id="mod-bloco-medicao">
+                <label style="display:inline-block; font-weight:bold; margin-bottom:0;">Medição Realizada:</label>
+                <input type="date" id="mod-medicao-realizada" style="width:auto; display:inline-block; margin-bottom:0; padding:4px 8px; font-size:0.9em; margin-left:5px;">
+                <button type="button" id="btn-salvar-medicao" onclick="salvarEtapaAtual()" style="padding:4px 10px; background:var(--primary); color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85em; margin-left:5px; font-weight:bold;">SALVAR</button>
+            </div>
+        </div>
+
+        <div id="mod-dynamic-area"></div>
+
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:15px; display:flex; justify-content:space-between; align-items:center; gap: 10px;">
+            <button type="button" class="btn-save" style="background:#6c757d; width:100%;" onclick="fecharModal()">Fechar Janela de Gerenciamento</button>
+            <button type="button" class="btn-save" style="width:65%; display:none; background:var(--success);" id="btn-avancar-etapa" onclick="avancarProcesso()">Avançar Etapa</button>
+            <button type="button" class="btn-save" style="width:65%; display:none; background:var(--primary);" id="btn-concluir-obra" onclick="finalizarObraProducao()">CONCLUIR OBRA</button>
+        </div>
+    </dialog>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyDxikX_gLL3l2fQuHmSZUai5-1CgBGp2ao", authDomain: "orcamento-80415.firebaseapp.com", projectId: "orcamento-80415" };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let listaMaterials = [], listaProcessos = [], listaAtendentes = [];
+        let procAtual = null;
+        let chartE = null, chartT = null;
+        let nomeUsuarioLogado = "";
+        let objetoUsuarioLogadoFirestore = null;
+
+        const ORDEM_ETAPAS = { 'LISTA': 1, 'COMPRA': 2, 'RECEBIMENTO': 3, 'PRODUCAO': 4, 'CONCLUIDO': 5 };
+
+        function formatarDataHora(isoStr) {
+            if(!isoStr) return "-";
+            try {
+                const d = new Date(isoStr);
+                if(isNaN(d.getTime())) return isoStr;
+                return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+            } catch(e) { return isoStr; }
+        }
+
+        document.getElementById('form-login').onsubmit = async(e) => {
+            e.preventDefault();
+            const email = document.getElementById('log-email').value.trim();
+            const pass = document.getElementById('log-pass').value;
+            
+            if(!email || !pass) {
+                alert("Por favor, preencha todos os campos.");
+                return;
+            }
+
+            try { 
+                await signInWithEmailAndPassword(auth, email, pass);
+                document.getElementById('form-login').reset();
+            } 
+            catch (err) { 
+                console.error(err);
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+                    alert("Usuário ou senha inválidos.");
+                } else if (err.code === 'auth/invalid-email') {
+                    alert("Formato de e-mail inválido.");
+                } else {
+                    alert("Erro ao fazer login: " + err.message);
+                }
+            }
+        };
+
+        window.logoutApp = () => {
+            signOut(auth).then(() => {
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('main-nav').style.display = 'none';
+            });
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-nav').style.display = 'flex';
+                document.getElementById('user-info').innerText = user.email;
+                
+                const emailLogado = user.email.trim().toLowerCase();
+                
+                try {
+                    const snapUser = await getDoc(doc(db, "usuarios", user.uid));
+                    if(snapUser.exists()) {
+                        objetoUsuarioLogadoFirestore = snapUser.data();
+                        nomeUsuarioLogado = objetoUsuarioLogadoFirestore.nome || user.email.split('@')[0];
+                    } else {
+                        objetoUsuarioLogadoFirestore = { email: emailLogado, perfil: 'user' };
+                        nomeUsuarioLogado = user.email.split('@')[0];
+                    }
+                } catch(e) {
+                    objetoUsuarioLogadoFirestore = { email: emailLogado, perfil: 'user' };
+                    nomeUsuarioLogado = user.email.split('@')[0];
+                }
+
+                const correspondente = listaAtendentes.find(a => a.email && a.email.trim().toLowerCase() === emailLogado);
+                if (correspondente && !objetoUsuarioLogadoFirestore.nome) {
+                    nomeUsuarioLogado = correspondente.nome;
+                }
+                
+                iniciarListeners();
+            } else {
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('main-nav').style.display = 'none';
+                nomeUsuarioLogado = "";
+                objetoUsuarioLogadoFirestore = null;
+            }
+        });
+
+        window.switchView = (v) => { 
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); 
+            if(document.getElementById('view-' + v)) document.getElementById('view-' + v).classList.add('active'); 
+            document.querySelectorAll('.nav-buttons button').forEach(b => b.classList.remove('active')); 
+            if(document.getElementById('btn-'+v)) document.getElementById('btn-'+v).classList.add('active'); 
+            if(v==='dashboard') renderDashboard();
+        };
+
+        function iniciarListeners() {
+            onSnapshot(collection(db, "pcp_materiais"), (snap) => {
+                listaMaterials = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b)=>a.descricao.localeCompare(b.descricao));
+                renderMateriais();
+            });
+            onSnapshot(collection(db, "atendentes"), (snap) => {
+                listaAtendentes = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>a.nome.localeCompare(b.nome));
+                populateFiltrosResponsavel();
+                
+                if (auth.currentUser) {
+                    const emailLogado = auth.currentUser.email.trim().toLowerCase();
+                    const correspondente = listaAtendentes.find(a => a.email && a.email.trim().toLowerCase() === emailLogado);
+                    if(correspondente && (!objetoUsuarioLogadoFirestore || !objetoUsuarioLogadoFirestore.nome)) {
+                        nomeUsuarioLogado = correspondente.nome;
+                    }
+                }
+                renderProcessos();
+            });
+            onSnapshot(collection(db, "pcp_processos"), (snap) => {
+                listaProcessos = snap.docs.map(d => {
+                    const data = d.data();
+                    if (data.lista && !data.lista.inicio && data.lista.fim) data.lista.inicio = data.lista.fim;
+                    if (!data.criado_em && data.lista && data.lista.inicio) data.criado_em = data.lista.inicio;
+                    return { id: d.id, ...data };
+                });
+                renderProcessos();
+                
+                if (procAtual) {
+                    const atualizado = listaProcessos.find(x => x.id === procAtual.id);
+                    if (atualizado) {
+                        const modalAberto = document.getElementById('dialog-processo').open;
+                        if(modalAberto) {
+                            let fAlvo = procAtual.etapa_modal_carregada;
+                            let subLeitura = document.getElementById('mod-titulo').innerText.includes('Consulta');
+                            procAtual = atualizado;
+                            procAtual.etapa_modal_carregada = fAlvo;
+                            renderMateriaisProcessoLocal(fAlvo === 'LISTA' ? 'lista' : (fAlvo === 'COMPRA' ? 'compra' : (fAlvo === 'RECEBIMENTO' ? 'receb' : 'prod')), subLeitura);
+                        }
+                    }
+                }
+                if(document.getElementById('view-dashboard').classList.contains('active')) renderDashboard();
+            });
+        }
+
+        function populateFiltrosResponsavel() {
+            const selectG = document.getElementById('f-resp');
+            const selectDb = document.getElementById('db-f-resp');
+            
+            let html = '<option value="todos">Todos os Responsáveis</option>';
+            listaAtendentes.forEach(a => { html += `<option value="${a.nome}">${a.nome}</option>`; });
+            
+            if(selectG) selectG.innerHTML = html;
+            if(selectDb) selectDb.innerHTML = html;
+        }
+
+        document.getElementById('form-material').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('mat-id').value;
+            const desc = document.getElementById('mat-desc').value;
+            if(id) await updateDoc(doc(db, "pcp_materiais", id), {descricao: desc});
+            else await addDoc(collection(db, "pcp_materiais"), {descricao: desc});
+            document.getElementById('form-material').reset();
+            document.getElementById('mat-id').value = '';
+        };
+        window.editarMat = (id, desc) => { document.getElementById('mat-id').value = id; document.getElementById('mat-desc').value = desc; };
+        window.excluirMat = async (id) => { if(confirm("Excluir material?")) await deleteDoc(doc(db, "pcp_materiais", id)); };
+        
+        function renderMateriais() {
+            const tb = document.getElementById('tb-materiais'); if(!tb) return; tb.innerHTML = '';
+            listaMaterials.forEach(m => {
+                tb.innerHTML += `<tr><td>${m.descricao}</td><td><button onclick="editarMat('${m.id}','${m.descricao}')">✏️</button> <button onclick="excluirMat('${m.id}')" style="color:red">🗑️</button></td></tr>`;
+            });
+        }
+
+        function listaMaterialsDropdownOptions() {
+            return listaMaterials.map(m => `<option value="${m.id}|${m.descricao}">${m.descricao}</option>`).join('');
+        }
+
+        function extrairTodosResponsaveisDaEtapa(p, etapa) {
+            if (!p.materiais || p.materiais.length === 0) {
+                let rGlobal = p[etapa.toLowerCase()]?.atendente || p[etapa === 'PRODUCAO' ? 'produao' : etapa.toLowerCase()]?.atendente || p.responsavel_pcp;
+                return rGlobal ? [rGlobal] : [];
+            }
+            
+            let resps = [];
+            p.materiais.forEach(m => {
+                if (etapa === 'LISTA' && m.lista_resp) resps.push(m.lista_resp);
+                if (etapa === 'COMPRA' && m.compra_resp) resps.push(m.compra_resp);
+                if (etapa === 'RECEBIMENTO' && m.receb_resp) resps.push(m.receb_resp);
+                if (etapa === 'PRODUCAO' && m.prod_resp) resps.push(m.prod_resp);
+            });
+            
+            if (resps.length === 0) {
+                let rGlobal = p[etapa.toLowerCase()]?.atendente || p[etapa === 'PRODUCAO' ? 'produao' : etapa.toLowerCase()]?.atendente || p.responsavel_pcp;
+                if (rGlobal) resps.push(rGlobal);
+            }
+            return [...new Set(resps)];
+        }
+
+        function aplicarFiltrosGerais(p, fTipo, fEtapa, fRespNome, fStatusResp) {
+            if(fTipo !== 'todos' && p.tipo !== fTipo) return false;
+            
+            if(fEtapa === 'ativos') {
+                if(p.etapa_atual === 'CONCLUIDO') return false;
+            } else if(fEtapa !== 'todos') {
+                let temMaterialNaEtapaFiltrada = p.materiais && p.materiais.some(m => m.etapa_material === fEtapa);
+                if(p.etapa_atual !== fEtapa && !temMaterialNaEtapaFiltrada) return false;
+            }
+
+            if(fRespNome !== 'todos') {
+                let respsDaEtapa = extrairTodosResponsaveisDaEtapa(p, p.etapa_atual);
+                if (p.materiais) {
+                    p.materiais.forEach(m => {
+                        if(m.lista_resp) respsDaEtapa.push(m.lista_resp);
+                        if(m.compra_resp) respsDaEtapa.push(m.compra_resp);
+                        if(m.receb_resp) respsDaEtapa.push(m.receb_resp);
+                        if(m.prod_resp) respsDaEtapa.push(m.prod_resp);
+                    });
+                }
+                if (!respsDaEtapa.includes(fRespNome)) return false;
+            }
+            return true;
+        }
+
+        function obterLimitsDatasEtapa(p, etapa) {
+            let inicioGlobal = null;
+            let fimGlobal = null;
+            let prefix = etapa === 'LISTA' ? 'lista' : (etapa === 'COMPRA' ? 'compra' : (etapa === 'RECEBIMENTO' ? 'receb' : 'prod'));
+
+            if (p.materiais && p.materiais.length > 0) {
+                p.materiais.forEach(m => {
+                    let startMat = m[`${prefix}_inicio`];
+                    let endMat = m[`${prefix}_fim`];
+
+                    if (startMat) {
+                        if (!inicioGlobal || new Date(startMat) < new Date(inicioGlobal)) inicioGlobal = startMat;
+                    }
+                    if (endMat) {
+                        if (!fimGlobal || new Date(endMat) > new Date(fimGlobal)) fimGlobal = endMat;
+                    }
+                });
+            }
+
+            if (!inicioGlobal) inicioGlobal = p[etapa.toLowerCase()]?.inicio || p[etapa === 'PRODUCAO' ? 'produao' : etapa.toLowerCase()]?.inicio || null;
+            if (!fimGlobal) fimGlobal = p[etapa.toLowerCase()]?.fim || p[etapa === 'PRODUCAO' ? 'produao' : etapa.toLowerCase()]?.fim || null;
+
+            return { inicio: inicioGlobal, fim: fimGlobal };
+        }
+
+        function obterHistoricoEtapaHtml(p, etapa) {
+            let recebidoDe = "-";
+            let recebidoData = "-";
+            let encaminhadoPara = "-";
+            let encaminhadoData = "-";
+            let responsavelAtual = "-";
+
+            if (etapa === 'LISTA') {
+                recebidoDe = p.responsavel_pcp || p.atendente_criador || p.lista?.atendente || "CRM Perfecta";
+                recebidoData = formatarDataHora(p.criado_em || p.lista?.inicio);
+                
+                let resps = p.materiais ? p.materiais.map(m => m.lista_resp) : [];
+                responsavelAtual = [...new Set(resps)].filter(Boolean).join(', ') || p.lista?.atendente || recebidoDe;
+
+                let tFim = obterLimitsDatasEtapa(p, 'LISTA');
+                if (tFim.fim) {
+                    encaminhadoData = formatarDataHora(tFim.fim);
+                    if (p.materiais && p.materiais.length > 0) {
+                        let respsNext = p.materiais.map(m => m.compra_resp);
+                        encaminhadoPara = [...new Set(respsNext)].filter(Boolean).join(', ') || "-";
+                    }
+                }
+            } 
+            else if (etapa === 'COMPRA') {
+                let tLista = obterLimitsDatasEtapa(p, 'LISTA');
+                if (tLista.fim) {
+                    recebidoData = formatarDataHora(tLista.fim);
+                }
+                if (p.materiais) {
+                    let resps = p.materiais.map(m => m.compra_resp);
+                    responsavelAtual = [...new Set(resps)].filter(Boolean).join(', ') || "-";
+                    let respsOrigem = p.materiais.map(m => m.lista_resp);
+                    recebidoDe = [...new Set(respsOrigem)].filter(Boolean).join(', ') || p.lista?.atendente || "-";
+                }
+                let tCompra = obterLimitsDatasEtapa(p, 'COMPRA');
+                if (tCompra.fim) {
+                    encaminhadoData = formatarDataHora(tCompra.fim);
+                    let respsNext = p.materiais.map(m => m.receb_resp);
+                    encaminhadoPara = [...new Set(respsNext)].filter(Boolean).join(', ') || "-";
+                }
+            }
+            else if (etapa === 'RECEBIMENTO') {
+                let tCompra = obterLimitsDatasEtapa(p, 'COMPRA');
+                if (tCompra.fim) {
+                    recebidoData = formatarDataHora(tCompra.fim);
+                }
+                if (p.materiais) {
+                    let resps = p.materiais.map(m => m.receb_resp);
+                    responsavelAtual = [...new Set(resps)].filter(Boolean).join(', ') || "-";
+                    let respsOrigem = p.materiais.map(m => m.compra_resp);
+                    recebidoDe = [...new Set(respsOrigem)].filter(Boolean).join(', ') || "-";
+                }
+                let tReceb = obterLimitsDatasEtapa(p, 'RECEBIMENTO');
+                if (tReceb.fim) {
+                    encaminhadoData = formatarDataHora(tReceb.fim);
+                    let respsNext = p.materiais.map(m => m.prod_resp);
+                    encaminhadoPara = [...new Set(respsNext)].filter(Boolean).join(', ') || "-";
+                }
+            }
+            else if (etapa === 'PRODUCAO') {
+                let tReceb = obterLimitsDatasEtapa(p, 'RECEBIMENTO');
+                if (tReceb.fim) {
+                    recebidoData = formatarDataHora(tReceb.fim);
+                }
+                if (p.materiais) {
+                    let resps = p.materiais.map(m => m.prod_resp || m.receb_resp);
+                    responsavelAtual = [...new Set(resps)].filter(Boolean).join(', ') || "-";
+                    let respsOrigem = p.materiais.map(m => m.receb_resp);
+                    recebidoDe = [...new Set(respsOrigem)].filter(Boolean).join(', ') || "-";
+                }
+                if (p.etapa_atual === 'CONCLUIDO') {
+                    encaminhadoData = formatarDataHora(p["producao.fim"] || p["produao.fim"]);
+                    encaminhadoPara = "OBRA CONCLUÍDA";
+                } else {
+                    encaminhadoPara = "Em Andamento";
+                }
+            }
+
+            return `
+                <div class="history-dates">
+                    <b>Responsável:</b><br>${responsavelAtual}<br>
+                    <b>Recebido de:</b><br>${recebidoDe}<br><span style="color:#0056b3;">${recebidoData}</span><br>
+                    <b>Encaminhado para:</b><br>${encaminhadoPara}<br><span style="color:#d9480f;">${encaminhadoData}</span>
+                </div>
+            `;
+        }
+
+        /* Função de cálculo do semáforo com base nos critérios estabelecidos */
+        function calcularSemaforoProcesso(p) {
+            let dataMedicaoBase = p.data_medicao ? new Date(p.data_medicao + (p.data_medicao.includes('T') ? '' : 'T00:00:00')) : null;
+            let dataMedicaoReal = p.medicao_realizada ? new Date(p.medicao_realizada + 'T00:00:00') : null;
+            
+            let medicaoMaisRecente = dataMedicaoBase;
+            if (dataMedicaoReal && (!medicaoMaisRecente || dataMedicaoReal > medicaoMaisRecente)) {
+                medicaoMaisRecente = dataMedicaoReal;
+            }
+            
+            let dataInstalacao = null;
+            if (medicaoMaisRecente) {
+                dataInstalacao = new Date(medicaoMaisRecente.getTime());
+                dataInstalacao.setDate(dataInstalacao.getDate() + 70);
+            }
+            
+            let dataLiberacaoProducao = null;
+            if (p.materiais && p.materiais.length > 0) {
+                p.materiais.forEach(m => {
+                    let dPrev = m.prev_recebimento ? new Date(m.prev_recebimento + 'T00:00:00') : null;
+                    let dEncProd = m.receb_fim ? new Date(m.receb_fim) : null;
+                    
+                    if (dPrev && (!dataLiberacaoProducao || dPrev > dataLiberacaoProducao)) {
+                        dataLiberacaoProducao = dPrev;
+                    }
+                    if (dEncProd && (!dataLiberacaoProducao || dEncProd > dataLiberacaoProducao)) {
+                        dataLiberacaoProducao = dEncProd;
+                    }
+                });
+            }
+            
+            let dataInicioProducao = null;
+            if (dataInstalacao) {
+                dataInicioProducao = new Date(dataInstalacao.getTime());
+                dataInicioProducao.setDate(dataInicioProducao.getDate() - 21);
+            }
+            
+            let dataFinalProducao = null;
+            if (dataLiberacaoProducao) {
+                dataFinalProducao = new Date(dataLiberacaoProducao.getTime());
+                dataFinalProducao.setDate(dataFinalProducao.getDate() + 21);
+            }
+            
+            let todosMateriais100 = false;
+            if (p.etapa_atual === 'CONCLUIDO') {
+                todosMateriais100 = true;
+            } else if (p.materiais && p.materiais.length > 0) {
+                todosMateriais100 = p.materiais.every(m => m.etapa_material === 'CONCLUIDO' || (m.prod_pct === 100));
+            }
+            
+            let cor = "verde";
+            let hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            
+            if (!todosMateriais100 && dataInstalacao) {
+                let dInstCompare = new Date(dataInstalacao.getTime()); dInstCompare.setHours(0,0,0,0);
+                
+                let condicaoVermelho1 = hoje > dInstCompare;
+                let condicaoVermelho2 = false;
+                if (dataFinalProducao) {
+                    let dFinalCompare = new Date(dataFinalProducao.getTime()); dFinalCompare.setHours(0,0,0,0);
+                    condicaoVermelho2 = dFinalCompare > dInstCompare;
+                }
+                
+                if (condicaoVermelho1 || condicaoVermelho2) {
+                    cor = "vermelho";
+                } else {
+                    let dataFinalMais15 = new Date(dataFinalProducao ? dataFinalProducao.getTime() : hoje.getTime());
+                    if (dataFinalProducao) {
+                        dataFinalMais15.setDate(dataFinalMais15.getDate() + 15);
+                        dataFinalMais15.setHours(0,0,0,0);
+                        if (dataFinalMais15 > dInstCompare) {
+                            cor = "amarelo";
+                        }
+                    }
+                }
+            }
+            
+            const fmt = (d) => d ? d.toLocaleDateString('pt-BR') : '-';
+            let txtTooltip = `Data Instalação: ${fmt(dataInstalacao)}\nData Liberação Prod: ${fmt(dataLiberacaoProducao)}\nData Início Prod: ${fmt(dataInicioProducao)}\nData Final Prod: ${fmt(dataFinalProducao)}`;
+            
+            return { cor, tooltip: txtTooltip };
+        }
+
+        window.renderProcessos = () => {
+            const container = document.getElementById('processos-container');
+            if(!container) return; container.innerHTML = '';
+            
+            const fTipo = document.getElementById('f-tipo').value;
+            const fEtapa = document.getElementById('f-etapa').value;
+            const fResp = document.getElementById('f-resp').value;
+            const fStatusResp = document.getElementById('f-status-resp').value;
+
+            const filtrados = listaProcessos.filter(p => aplicarFiltrosGerais(p, fTipo, fEtapa, fResp, fStatusResp));
+
+            if(filtrados.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:30px; background:white; border-radius:8px; color:#666;">Nenhum processo em lote encontrado para os filtros ativos.</div>`;
+                return;
+            }
+
+            filtrados.forEach(p => {
+                const isPvc = p.tipo === 'PVC';
+                
+                let dataMedLead = p.data_medicao ? new Date(p.data_medicao).toLocaleDateString('pt-BR') : '-';
+                let dataMedRealizada = p.medicao_realizada ? new Date(p.medicao_realizada + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+                let datasBlocoHtml = `
+                    <div class="history-dates" style="border-top:1px dashed #ccc; margin-top:5px; padding-top:5px;">
+                        <b>P. Med. Lead:</b> ${dataMedLead}<br>
+                        <b>Med. Realizada:</b> ${dataMedRealizada}
+                    </div>
+                `;
+
+                let mProd = p.marcos_produzidos || 0;
+                let mTotal = p.qtd_marcos || 0;
+                let pctM = mTotal ? Math.round((mProd / mTotal) * 100) : 0;
+
+                let fProd = p.folhas_produzidos || 0;
+                let fTotal = p.qtd_folhas || 0;
+                let pctF = fTotal ? Math.round((fProd / fTotal) * 100) : 0;
+
+                let infoProdHtml = '';
+                if(p.etapa_atual === 'PRODUCAO' || p.etapa_atual === 'CONCLUIDO') {
+                    infoProdHtml = `
+                        <br><span style="color:var(--success); font-weight:bold; font-size:0.85em;">
+                            Marcos: ${mProd}/${mTotal} (${pctM}%) | Folhas: ${fProd}/${fTotal} (${pctF}%)
+                        </span>
+                    `;
+                }
+
+                let usuarioEhAdminPcp = objetoUsuarioLogadoFirestore && (objetoUsuarioLogadoFirestore.perfil === 'admin' || objetoUsuarioLogadoFirestore.admin === true);
+                let btnExcluirHtml = usuarioEhAdminPcp ? `<button onclick="excluirProcesso('${p.id}')" style="position:absolute; top:15px; right:15px; background:none; border:none; color:red; cursor:pointer; font-size:1.2em;" title="Excluir Processo">🗑️</button>` : '';
+
+                /* Injeção e processamento do Semáforo */
+                let resSemaforo = calcularSemaforoProcesso(p);
+
+                container.innerHTML += `
+                <div class="process-card ${isPvc ? 'card-pvc' : 'card-alu'}">
+                    ${btnExcluirHtml}
+                    <div class="card-header" style="padding-right: 30px;">
+                        <span style="font-weight:bold; font-size:1.1em;">${p.cliente_nome}</span>
+                        <div class="semaforo-container">
+                            <span class="semaforo-dot ${resSemaforo.cor}" data-tooltip="${resSemaforo.tooltip}"></span>
+                            <span class="stage-badge">${p.etapa_atual}</span>
+                        </div>
+                    </div>
+                    <div style="font-size:0.85em; color:#555; display:flex; gap:15px; margin-bottom:5px; flex-wrap:wrap;">
+                        <span><b>Tipo:</b> ${p.tipo}</span>
+                        <span><b>Peças Totais:</b> ${p.qtd_pecas || 0}</span>
+                        <span><b>Marcos:</b> ${mTotal}</span>
+                        <span><b>Folhas:</b> ${fTotal}</span>
+                        ${infoProdHtml}
+                    </div>
+                    
+                    <div class="history-grid">
+                        <div class="history-col">
+                            <div>
+                                <div class="history-title">LISTA</div>
+                                ${obterHistoricoEtapaHtml(p, 'LISTA')}
+                            </div>
+                            ${datasBlocoHtml}
+                            <div style="margin-top:auto; display:flex; flex-direction:column; gap:2px;">
+                                <button class="btn-manage-stage" onclick="abrirModalProcesso('${p.id}', 'LISTA', false)">⚙️ Gerenciar</button>
+                                <button class="btn-view-stage" onclick="abrirModalProcesso('${p.id}', 'LISTA', true)">👁️ Visualizar</button>
+                            </div>
+                        </div>
+                        <div class="history-col">
+                            <div>
+                                <div class="history-title">COMPRA</div>
+                                ${obterHistoricoEtapaHtml(p, 'COMPRA')}
+                            </div>
+                            ${datasBlocoHtml}
+                            <div style="margin-top:auto; display:flex; flex-direction:column; gap:2px;">
+                                <button class="btn-manage-stage" onclick="abrirModalProcesso('${p.id}', 'COMPRA', false)">⚙️ Gerenciar</button>
+                                <button class="btn-view-stage" onclick="abrirModalProcesso('${p.id}', 'COMPRA', true)">👁️ Visualizar</button>
+                            </div>
+                        </div>
+                        <div class="history-col">
+                            <div>
+                                <div class="history-title">RECEBIMENTO</div>
+                                ${obterHistoricoEtapaHtml(p, 'RECEBIMENTO')}
+                            </div>
+                            ${datasBlocoHtml}
+                            <div style="margin-top:auto; display:flex; flex-direction:column; gap:2px;">
+                                <button class="btn-manage-stage" onclick="abrirModalProcesso('${p.id}', 'RECEBIMENTO', false)">⚙️ Gerenciar</button>
+                                <button class="btn-view-stage" onclick="abrirModalProcesso('${p.id}', 'RECEBIMENTO', true)">👁️ Visualizar</button>
+                            </div>
+                        </div>
+                        <div class="history-col">
+                            <div>
+                                <div class="history-title">PRODUÇÃO</div>
+                                ${obterHistoricoEtapaHtml(p, 'PRODUCAO')}
+                            </div>
+                            ${datasBlocoHtml}
+                            <div style="margin-top:auto; display:flex; flex-direction:column; gap:2px;">
+                                <button class="btn-manage-stage" onclick="abrirModalProcesso('${p.id}', 'PRODUCAO', false)">⚙️ Gerenciar</button>
+                                <button class="btn-view-stage" onclick="abrirModalProcesso('${p.id}', 'PRODUCAO', true)">👁️ Visualizar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        };
+
+        window.excluirProcesso = async (id) => {
+            if(confirm("Deseja realmente remover esta ordem de produção permanentemente?")) {
+                await deleteDoc(doc(db, "pcp_processos", id));
+            }
+        };
+
+        window.salvarEtapaAtual = async () => {
+            if(!procAtual) return;
+
+            try {
+                let mats = [...(procAtual.materiais || [])];
+                let etapaAlvoModal = procAtual.etapa_modal_carregada;
+
+                mats.forEach((m, idx) => {
+                    let obs = document.getElementById(`mat-obs-${idx}`);
+                    let pct = document.getElementById(`mat-pct-${idx}`);
+                    let resp = document.getElementById(`mat-resp-${idx}`);
+                    let prev = document.getElementById(`mat-prev-${idx}`);
+
+                    if (obs) {
+                        if (etapaAlvoModal === 'LISTA') m.lista_obs = obs.value;
+                        if (etapaAlvoModal === 'COMPRA') m.compra_obs = obs.value;
+                        if (etapaAlvoModal === 'RECEBIMENTO') m.receb_obs = obs.value;
+                        if (etapaAlvoModal === 'PRODUCAO') m.prod_obs = obs.value;
+                    }
+
+                    if (pct) {
+                        const v = parseInt(pct.value) || 0;
+                        if (etapaAlvoModal === 'COMPRA') m.compra_pct = v;
+                        if (etapaAlvoModal === 'RECEBIMENTO') m.receb_pct = v;
+                        if (etapaAlvoModal === 'PRODUCAO') m.prod_pct = v;
+                    }
+
+                    if (resp && resp.value) {
+                        if (etapaAlvoModal === 'LISTA') m.lista_resp = resp.value;
+                        if (etapaAlvoModal === 'COMPRA') m.compra_resp = resp.value;
+                        if (etapaAlvoModal === 'RECEBIMENTO') m.receb_resp = resp.value;
+                        if (etapaAlvoModal === 'PRODUCAO') m.prod_resp = resp.value;
+                    }
+
+                    if (prev && etapaAlvoModal === 'COMPRA') {
+                        m.prev_recebimento = prev.value;
+                    }
+                });
+
+                let payload = {
+                    materiais: mats,
+                    medicao_realizada: document.getElementById('mod-medicao-realizada')?.value || '',
+                    qtd_marcos: parseInt(document.getElementById('mod-structural-marcos')?.value) || 0,
+                    qtd_folhas: parseInt(document.getElementById('mod-structural-folhas')?.value) || 0
+                };
+
+                const inputPecasLista = document.getElementById('lst-pecas-lista');
+                const inputNumLista = document.getElementById('lst-num-lista');
+                if (inputPecasLista) payload.pecas_desta_lista = parseInt(inputPecasLista.value) || 0;
+                if (inputNumLista) payload.num_da_lista = inputNumLista.value || '';
+
+                if(document.getElementById('prod-marcos-produzidos')){
+                    payload.marcos_produzidos = parseInt(document.getElementById('prod-marcos-produzidos').value) || 0;
+                }
+
+                if(document.getElementById('prod-folhas-produzidas')){
+                    payload.folhas_produzidos = parseInt(document.getElementById('prod-folhas-produzidas').value) || 0;
+                }
+
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), payload);
+                alert("Dados salvos com sucesso!");
+            } catch(e){
+                alert("Erro ao salvar: " + e.message);
+            }
+        };
+
+        window.salvarDadosModalSemAvancar = async () => {
+            if(!procAtual) return;
+            const medRealizada = document.getElementById('mod-medicao-realizada').value;
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { medicao_realizada: medRealizada });
+                alert("Data de medição real salva!");
+            } catch(e) { alert("Erro ao salvar medição: " + e.message); }
+        };
+
+        window.salvarEstruturaisGlobais = async () => {
+            if(!procAtual) return;
+            const mVal = parseInt(document.getElementById('mod-structural-marcos').value) || 0;
+            const fVal = parseInt(document.getElementById('mod-structural-folhas').value) || 0;
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), {
+                    qtd_marcos: mVal,
+                    qtd_folhas: fVal
+                });
+            } catch(e) { console.error("Erro ao salvar dados de estrutura: ", e); }
+        };
+
+        window.salvarPrevisaoMaterialInline = async (idx) => {
+            if (!procAtual || !procAtual.materiais) return;
+            const prevInput = document.getElementById(`mat-prev-${idx}`);
+            if (!prevInput) return;
+            
+            procAtual.materiais[idx].prev_recebimento = prevInput.value;
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { materiais: procAtual.materiais });
+            } catch(e) {
+                console.error("Erro ao salvar previsão automaticamente: ", e);
+            }
+        };
+
+        window.abrirModalProcesso = (id, etapaAlvo, apenasLeitura = false) => {
+            procAtual = listaProcessos.find(x => x.id === id);
+            procAtual.etapa_modal_carregada = etapaAlvo; 
+
+            document.getElementById('mod-cli').innerText = procAtual.cliente_nome;
+            document.getElementById('mod-tipo').innerText = procAtual.tipo;
+            document.getElementById('mod-medicao').innerText = procAtual.data_medicao ? new Date(procAtual.data_medicao).toLocaleDateString('pt-BR') : '-';
+            document.getElementById('mod-pecas').innerText = procAtual.qtd_pecas || 0;
+            
+            const inpMarcos = document.getElementById('mod-structural-marcos');
+            const inpFolhas = document.getElementById('mod-structural-folhas');
+            inpMarcos.value = procAtual.qtd_marcos || 0;
+            inpFolhas.value = procAtual.qtd_folhas || 0;
+            
+            inpMarcos.disabled = apenasLeitura;
+            inpFolhas.disabled = apenasLeitura;
+
+            const inputMedRealizada = document.getElementById('mod-medicao-realizada');
+            inputMedRealizada.value = procAtual.medicao_realizada || "";
+            
+            const area = document.getElementById('mod-dynamic-area');
+            const btnAvancar = document.getElementById('btn-avancar-etapa');
+            const btnConcluirObra = document.getElementById('btn-concluir-obra');
+            const btnSalvarMedicao = document.getElementById('btn-salvar-medicao');
+            
+            area.innerHTML = '';
+            if(btnAvancar) btnAvancar.style.display = 'none';
+            if(btnConcluirObra) btnConcluirObra.style.display = 'none';
+            
+            if (apenasLeitura) {
+                document.getElementById('mod-titulo').innerText = `Consulta Histórica - Detalhes da Etapa: ${etapaAlvo}`;
+                inputMedRealizada.disabled = true;
+                if(btnSalvarMedicao) btnSalvarMedicao.style.display = 'none';
+            } else {
+                document.getElementById('mod-titulo').innerText = `Gestão - Gerenciando Painel da Etapa: ${etapaAlvo}`;
+                inputMedRealizada.disabled = false;
+                if(btnSalvarMedicao) btnSalvarMedicao.style.display = 'inline-block';
+            }
+
+            let responsavelListaPadrao = procAtual.lista?.atendente || procAtual.responsavel_pcp || procAtual.atendente_criador || "";
+            let usuarioEhResponsavelLista = responsavelListaPadrao === nomeUsuarioLogado;
+
+            if(etapaAlvo === 'LISTA') {
+                let attrDisabled = apenasLeitura ? 'disabled' : '';
+                
+                let htmlLista = `
+                <div style="display:flex; gap:10px; margin-bottom:12px;">
+                    <div style="flex:1;">
+                        <label>Peças desta Lista *</label>
+                        <input type="number" min="1" id="lst-pecas-lista" value="${procAtual.pecas_desta_lista || ''}" placeholder="Qtd peças" ${attrDisabled}>
+                    </div>
+                    <div style="flex:1;">
+                        <label>Nº da Lista *</label>
+                        <input type="text" id="lst-num-lista" value="${procAtual.num_da_lista || ''}" placeholder="Número identificador" ${attrDisabled}>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <b>Materiais da Lista (Encaminhamento Individual):</b>
+                    ${(!apenasLeitura && usuarioEhResponsavelLista) ? `
+                    <div style="display:flex; gap:5px;">
+                        <select id="sel-add-mat" style="width:150px; margin:0;">
+                            <option value="">Selecionar...</option>
+                            ${listaMaterialsDropdownOptions()}
+                        </select>
+                        <button type="button" onclick="addMaterialLocal('lista')" style="padding:5px;">Add</button>
+                    </div>` : ''}
+                </div>
+                <div id="lista-materiais-dinamica" style="margin-bottom:15px;"></div>`;
+
+                area.innerHTML = htmlLista;
+                renderMateriaisProcessoLocal('lista', apenasLeitura);
+            }
+            else if(etapaAlvo === 'PRODUCAO') {
+                let mProd = procAtual.marcos_produzidos || 0;
+                let mTotal = procAtual.qtd_marcos || 0;
+                let pctM = mTotal ? Math.round((mProd / mTotal) * 100) : 0;
+
+                let fProd = procAtual.folhas_produzidos || 0;
+                let fTotal = procAtual.qtd_folhas || 0;
+                let pctF = fTotal ? Math.round((fProd / fTotal) * 100) : 0;
+
+                let listaRespsProd = extrairTodosResponsaveisDaEtapa(procAtual, 'PRODUCAO');
+                let usuarioLogadoPodeProduzir = listaRespsProd.length === 0 || listaRespsProd.includes(nomeUsuarioLogado);
+
+                if(!apenasLeitura && usuarioLogadoPodeProduzir && btnConcluirObra) {
+                    btnConcluirObra.style.display = (pctM >= 100 && pctF >= 100) ? 'block' : 'none';
+                }
+
+                let attrDisabled = (!apenasLeitura && usuarioLogadoPodeProduzir) ? '' : 'disabled';
+                let msgRestricaoProd = (!usuarioLogadoPodeProduzir && !apenasLeitura) ? `<p style="color:red; font-weight:bold; font-size:0.9em; margin-top:0;">⚠️ Apenas os responsáveis atribuídos à Produção (${listaRespsProd.join(', ')}) podem gerenciar esta etapa.</p>` : '';
+
+                let htmlProd = `
+                ${msgRestricaoProd}
+                <div style="background:#f8f9fa; border:1px solid #dee2e6; padding:15px; border-radius:6px; margin-bottom:15px;">
+                    <table class="prod-layout-table">
+                        <tr>
+                            <td class="prod-layout-label">Qtd MARCOS</td>
+                            <td><span>${mTotal}</span></td>
+                            <td class="prod-layout-input-cell">
+                                <span>Qtd Produzidos</span>
+                                <input type="number" min="0" max="${mTotal}" id="prod-marcos-produzidos" value="${mProd}" oninput="window.recalcularProducaoEstruturalInline()" ${attrDisabled}>
+                            </td>
+                            <td class="prod-layout-badge-cell">
+                                <div class="prod-layout-badge-container">
+                                    <span class="prod-layout-badge-title">Avanço M.</span>
+                                    <span id="prod-lbl-pct-marcos" class="prod-layout-badge-value">${pctM}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="prod-layout-label">Qtd FOLHAS</td>
+                            <td><span>${fTotal}</span></td>
+                            <td class="prod-layout-input-cell">
+                                <span>Qtd Produzidos</span>
+                                <input type="number" min="0" max="${fTotal}" id="prod-folhas-produzidas" value="${fProd}" oninput="window.recalcularProducaoEstruturalInline()" ${attrDisabled}>
+                            </td>
+                            <td class="prod-layout-badge-cell">
+                                <div class="prod-layout-badge-container">
+                                    <span class="prod-layout-badge-title">Avanço F.</span>
+                                    <span id="prod-lbl-pct-folhas" class="prod-layout-badge-value">${pctF}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <h3>Materiais da Obra (Visualização Geral de Etapas):</h3>
+                <div id="lista-materiais-dinamica"></div>`;
+                
+                area.innerHTML = htmlProd;
+                renderMateriaisProcessoLocal('prod', apenasLeitura);
+            }
+            else {
+                let actKey = etapaAlvo === 'COMPRA' ? 'compra' : 'receb';
+                let htmlMat = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><b>Materiais na Etapa de ${etapaAlvo}:</b>`;
+                if(!apenasLeitura && etapaAlvo === 'COMPRA') {
+                    htmlMat += `<div style="display:flex; gap:5px;"><select id="sel-add-mat" style="width:150px; margin:0;"><option value="">Selecionar...</option>${listaMaterialsDropdownOptions()}</select><button onclick="addMaterialLocal('compra')" style="padding:5px;">Add</button></div>`;
+                }
+                htmlMat += `</div><div id="lista-materiais-dinamica"></div>`;
+                area.innerHTML = htmlMat;
+                
+                renderMateriaisProcessoLocal(actKey, apenasLeitura);
+            }
+            
+            document.getElementById('dialog-processo').showModal();
+        };
+
+        window.recalcularProducaoEstruturalInline = async () => {
+            let mVal = parseInt(document.getElementById('prod-marcos-produzidos').value) || 0;
+            let fVal = parseInt(document.getElementById('prod-folhas-produzidas').value) || 0;
+            
+            let mTotal = procAtual ? procAtual.qtd_marcos || 0 : 0;
+            let fTotal = procAtual ? procAtual.qtd_folhas || 0 : 0;
+            
+            let pctM = mTotal ? Math.round((mVal/mTotal)*100) : 0;
+            let pctF = fTotal ? Math.round((fVal/fTotal)*100) : 0;
+            
+            document.getElementById('prod-lbl-pct-marcos').innerText = pctM + '%';
+            document.getElementById('prod-lbl-pct-folhas').innerText = pctF + '%';
+            
+            const btnConcluirObra = document.getElementById('btn-concluir-obra');
+            if(btnConcluirObra && !document.getElementById('mod-titulo').innerText.includes('Consulta')) {
+                btnConcluirObra.style.display = (pctM >= 100 && pctF >= 100) ? 'block' : 'none';
+            }
+
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { 
+                    marcos_produzidos: mVal,
+                    folhas_produzidos: fVal
+                });
+            } catch(e) { console.error("Erro ao sincronizar contadores estruturais de produção: ", e); }
+        };
+
+        window.addMaterialLocal = async (faseContext) => {
+            const val = document.getElementById('sel-add-mat').value;
+            if(!val) return;
+            const [id, desc] = val.split('|');
+            if(!procAtual.materiais) procAtual.materiais = [];
+            if(procAtual.materiais.find(m => m.id === id)) return alert("Material já adicionado.");
+            
+            let ts = new Date().toISOString();
+            let responsavelListaPadrao = procAtual.lista?.atendente || procAtual.responsavel_pcp || procAtual.atendente_criador || nomeUsuarioLogado || "";
+            
+            let etapaInicialMaterial = "LISTA";
+            let compResp = "";
+            let compInicio = "";
+            if (faseContext === 'compra') {
+                etapaInicialMaterial = "COMPRA";
+                compResp = nomeUsuarioLogado;
+                compInicio = ts;
+            }
+
+            const novoMaterial = {
+                id: id, descricao: desc,
+                lista_obs: "", etapa_material: etapaInicialMaterial, lista_resp: responsavelListaPadrao, lista_inicio: ts, lista_fim: (faseContext === 'compra' ? ts : ""),
+                compra_pct: 0, compra_obs: "", compra_resp: compResp, compra_inicio: compInicio, compra_fim: "",
+                receb_pct: 0, receb_obs: "", receb_resp: "", receb_inicio: "", receb_fim: "",
+                prod_pct: 0, prod_obs: "", prod_resp: "", prod_inicio: "", prod_fim: "",
+                prev_recebimento: ""
+            };
+            
+            procAtual.materiais.push(novoMaterial);
+
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { materiais: procAtual.materiais });
+                renderMateriaisProcessoLocal(faseContext === 'lista' ? 'lista' : 'compra', false);
+            } catch(e) {
+                alert("Erro ao salvar material no banco: " + e.message);
+            }
+        };
+
+        window.removerMaterialLocal = async (idx) => {
+            if(!procAtual || !procAtual.materiais) return;
+            if(!confirm(`Deseja realmente remover o material "${procAtual.materiais[idx].descricao}" deste lote de produção?`)) return;
+            
+            procAtual.materiais.splice(idx, 1);
+            
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { materiais: procAtual.materiais });
+                let fAlvo = procAtual.etapa_modal_carregada;
+                let subLeitura = document.getElementById('mod-titulo').innerText.includes('Consulta');
+                renderMateriaisProcessoLocal(fAlvo === 'LISTA' ? 'lista' : (fAlvo === 'COMPRA' ? 'compra' : (fAlvo === 'RECEBIMENTO' ? 'receb' : 'prod')), subLeitura);
+                alert("Material removido do processo!");
+            } catch(e) {
+                alert("Erro ao remover material: " + e.message);
+            }
+        };
+
+        window.renderMateriaisProcessoLocal = (actKey, apenasLeitura = false) => {
+            const div = document.getElementById('lista-materiais-dinamica');
+            if(!div) return;
+            
+            if(!procAtual.materiais || procAtual.materiais.length === 0) {
+                div.innerHTML = "<p style='color:#999; font-size:0.85em;'>Nenhum material associado a esta ordem.</p>";
+                return;
+            }
+            
+            let html = '';
+            let etapaAlvoModal = procAtual.etapa_modal_carregada;
+            let responsavelListaPadrao = procAtual.lista?.atendente || procAtual.responsavel_pcp || procAtual.atendente_criador || "";
+
+            procAtual.materiais.forEach((m, idx) => {
+                let currentEtapaMat = m.etapa_material || 'LISTA';
+                
+                if (!apenasLeitura && etapaAlvoModal !== 'PRODUCAO' && ORDEM_ETAPAS[currentEtapaMat] < ORDEM_ETAPAS[etapaAlvoModal]) {
+                    return;
+                }
+
+                let currentFasePct = 0;
+                if(currentEtapaMat === 'COMPRA') currentFasePct = m.compra_pct || 0;
+                if(currentEtapaMat === 'RECEBIMENTO') currentFasePct = m.receb_pct || 0;
+                if(currentEtapaMat === 'PRODUCAO') currentFasePct = m.prod_pct || 0;
+                if(currentEtapaMat === 'CONCLUIDO') currentFasePct = 100;
+
+                let corBadgeEstilo = 'background:#e9ecef; color:#495057;';
+                if(currentEtapaMat === 'LISTA') corBadgeEstilo = 'background:#d6336c; color:white;';
+                if(currentEtapaMat === 'COMPRA') corBadgeEstilo = 'background:#f76707; color:white;';
+                if(currentEtapaMat === 'RECEBIMENTO') corBadgeEstilo = 'background:#007bff; color:white;';
+                if(currentEtapaMat === 'PRODUCAO') corBadgeEstilo = 'background:#37b24d; color:white;';
+                if(currentEtapaMat === 'CONCLUIDO') corBadgeEstilo = 'background:#1b2a47; color:white;';
+
+                let responsavelFaseMaterial = '';
+                if(etapaAlvoModal === 'LISTA') responsavelFaseMaterial = m.lista_resp || responsavelListaPadrao;
+                if(etapaAlvoModal === 'COMPRA') responsavelFaseMaterial = m.compra_resp;
+                if(etapaAlvoModal === 'RECEBIMENTO') responsavelFaseMaterial = m.receb_resp;
+                if(etapaAlvoModal === 'PRODUCAO') responsavelFaseMaterial = m.prod_resp || m.receb_resp;
+
+                let usuarioEhResponsavel = responsavelFaseMaterial === nomeUsuarioLogado;
+                let btnLixeiraHtml = (!apenasLeitura && currentEtapaMat === 'LISTA' && etapaAlvoModal === 'LISTA' && usuarioEhResponsavel) 
+                    ? `<button type="button" class="btn-del-mat-line" onclick="removerMaterialLocal(${idx})" title="Remover Material">🗑️</button>` 
+                    : '';
+
+                let badgeEtapaText = currentEtapaMat === 'LISTA' || currentEtapaMat === 'CONCLUIDO' ? currentEtapaMat : `${currentEtapaMat} (${currentFasePct}%)`;
+                let badgeEtapa = `
+                    <div style="display:inline-flex; align-items:center; gap:5px;">
+                        <span style="font-size:0.75rem; padding:4px 8px; border-radius:4px; font-weight:bold; min-width:115px; text-align:center; ${corBadgeEstilo}">${badgeEtapaText}</span>
+                        ${btnLixeiraHtml}
+                    </div>
+                `;
+                
+                let permitirGerenciamentoLinha = !apenasLeitura && (currentEtapaMat === etapaAlvoModal) && usuarioEhResponsavel;
+                let disabledAttr = permitirGerenciamentoLinha ? '' : 'disabled';
+
+                let inputPrevisaoHtml = '';
+                if ((etapaAlvoModal === 'COMPRA' || etapaAlvoModal === 'RECEBIMENTO' || etapaAlvoModal === 'PRODUCAO')) {
+                    if (etapaAlvoModal === 'COMPRA' && permitirGerenciamentoLinha) {
+                        inputPrevisaoHtml = `
+                            <div style="display:flex; flex-direction:column; gap:2px; margin-right: 5px;">
+                                <small style="font-size:0.7rem; font-weight:bold; color:#666;">Prev. Recebimento</small>
+                                <input type="date" class="input-date-inline" id="mat-prev-${idx}" value="${m.prev_recebimento || ''}" onchange="window.salvarPrevisaoMaterialInline(${idx})">
+                            </div>
+                        `;
+                    } else {
+                        inputPrevisaoHtml = m.prev_recebimento ? `
+                            <div style="font-size:0.8em; color:#555; text-align:center; padding: 0 10px; border-left:1px dashed #ccc; border-right:1px dashed #ccc;">
+                                <small style="display:block; font-size:0.7rem; color:#999; font-weight:bold;">Prev. Receb.</small>
+                                <b>${new Date(m.prev_recebimento + 'T00:00:00').toLocaleDateString('pt-BR')}</b>
+                            </div>
+                        ` : `
+                            <div style="font-size:0.8em; color:#999; text-align:center; padding: 0 10px; border-left:1px dashed #ccc; border-right:1px dashed #ccc;">
+                                <small style="display:block; font-size:0.7rem; color:#999; font-weight:bold;">Prev. Receb.</small>
+                                <span>-</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                if(etapaAlvoModal === 'LISTA') {
+                    let interfaceAcao = '';
+                    if (permitirGerenciamentoLinha) {
+                        let optionsAtendentes = `<option value="">Escolher Resp. Compra...</option>`;
+                        listaAtendentes.forEach(a => {
+                            optionsAtendentes += `<option value="${a.nome}">${a.nome}</option>`;
+                        });
+                        interfaceAcao = `
+                            <select class="sel-resp-inline" id="mat-resp-${idx}">${optionsAtendentes}</select>
+                            <button type="button" class="btn-inline-fase" onclick="avancarMaterialIndividual(${idx})">Enviar p/ Compra</button>
+                        `;
+                    } else {
+                        let msgDono = (!usuarioEhResponsavel && !apenasLeitura && currentEtapaMat === etapaAlvoModal) ? `<br><small style="color:red;font-weight:bold;">Acesso exclusivo: ${responsavelFaseMaterial}</small>` : '';
+                        interfaceAcao = `
+                            <div style="font-size:0.82em; color:#666; display:flex; flex-direction:column; align-items:flex-end; margin-left:auto;">
+                                <div><b>Encaminhado por:</b> ${m.lista_resp || responsavelListaPadrao}</div>
+                                <div style="font-size:0.72rem; color:#999;">I: ${formatarDataHora(m.lista_inicio)} | F: ${formatarDataHora(m.lista_fim)}</div>
+                                ${msgDono}
+                            </div>
+                        `;
+                    }
+
+                    let txtRecebidoDe = procAtual.responsavel_pcp || procAtual.atendente_criador || "CRM Perfecta";
+                    let txtResponsavel = m.lista_resp || responsavelListaPadrao;
+                    let txtEncaminhadoPara = m.compra_resp || "Pendente";
+
+                    html += `
+                    <div class="material-box-container mat-box-lista">
+                        <div class="material-row-top">
+                            <div style="width:140px; font-weight:bold; font-size:0.85em; overflow:hidden; text-overflow:ellipsis;">${m.descricao}</div>
+                            ${badgeEtapa}
+                            <input type="text" class="input-obs" id="mat-obs-${idx}" value="${m.lista_obs || ''}" placeholder="Observações da lista..." ${disabledAttr}>
+                            ${interfaceAcao}
+                        </div>
+                        <div class="material-audit-grid grid-3-cols">
+                            <div class="audit-item"><b>Recebido de:</b><span>${txtRecebidoDe}</span><small style="color:#888;">${formatarDataHora(m.lista_inicio || procAtual.criado_em)}</small></div>
+                            <div class="audit-item"><b>Responsável:</b><span>${txtResponsavel}</span><small style="color:#888;">${m.lista_fim ? formatarDataHora(m.lista_fim) : 'Em andamento'}</small></div>
+                            <div class="audit-item"><b>Encaminhado para:</b><span>${txtEncaminhadoPara}</span></div>
+                        </div>
+                    </div>`;
+                } 
+                else if(etapaAlvoModal === 'PRODUCAO') {
+                    let txtRecebidoDe = m.receb_resp || m.compra_resp || m.lista_resp || responsavelListaPadrao;
+                    let txtResponsavel = m.prod_resp || m.receb_resp || "Pendente";
+                    let txtEncaminhadoPara = m.etapa_material === 'CONCLUIDO' ? 'OBRA CONCLUÍDA' : 'Pendente';
+
+                    let corClasseBordaEstilo = 'mat-box-producao';
+                    if(currentEtapaMat === 'LISTA') corClasseBordaEstilo = 'mat-box-lista';
+                    if(currentEtapaMat === 'COMPRA') corClasseBordaEstilo = 'mat-box-compra';
+                    if(currentEtapaMat === 'RECEBIMENTO') corClasseBordaEstilo = 'mat-box-recebimento';
+
+                    let innerInterfaceProducao = '';
+                    if (permitirGerenciamentoLinha) {
+                        innerInterfaceProducao = `
+                            <input type="number" min="0" max="100" class="input-pct" id="mat-pct-${idx}" value="${m.prod_pct || 0}" placeholder="%">
+                            <button type="button" class="btn-inline-fase" onclick="avancarMaterialIndividual(${idx})">Concluir Componente</button>
+                        `;
+                    } else {
+                        innerInterfaceProducao = `
+                            <div style="font-size:0.82em; color:#666; display:flex; flex-direction:column; align-items:flex-end; margin-left:auto; gap:2px;">
+                                <div><b>Progresso:</b> ${m.prod_pct || 0}%</div>
+                                <div style="font-size:0.72rem; color:#999;">I: ${formatarDataHora(m.prod_inicio)} | F: ${formatarDataHora(m.prod_fim)}</div>
+                            </div>
+                        `;
+                    }
+
+                    let dataRecebimentoCompleta = m.prod_inicio || m.receb_fim || m.compra_fim || m.lista_fim || procAtual.criado_em;
+
+                    html += `
+                    <div class="material-box-container ${corClasseBordaEstilo}">
+                        <div class="material-row-top">
+                            <div style="width:140px; font-weight:bold; font-size:0.85em; overflow:hidden; text-overflow:ellipsis;">${m.descricao}</div>
+                            ${badgeEtapa}
+                            <input type="text" class="input-obs" id="mat-obs-${idx}" value="${m.prod_obs || ''}" placeholder="Sem observações..." ${disabledAttr}>
+                            ${inputPrevisaoHtml}
+                            ${innerInterfaceProducao}
+                        </div>
+                        <div class="material-audit-grid grid-3-cols">
+                            <div class="audit-item"><b>Recebido de:</b><span>${txtRecebidoDe}</span><small style="color:#888;">${formatarDataHora(dataRecebimentoCompleta)}</small></div>
+                            <div class="audit-item"><b>Responsável:</b><span>${txtResponsavel}</span><small style="color:#888;">${m.prod_fim ? formatarDataHora(m.prod_fim) : 'Em andamento'}</small></div>
+                            <div class="audit-item"><b>Encaminhado para:</b><span>${txtEncaminhadoPara}</span></div>
+                        </div>
+                    </div>`;
+                } 
+                else {
+                    let interfaceAcao = '';
+
+                    if (permitirGerenciamentoLinha) {
+                        let labelFaseNext = etapaAlvoModal === 'COMPRA' ? 'Recebimento' : 'Produção';
+                        let optionsAtendentes = `<option value="">Resp. ${labelFaseNext}...</option>`;
+                        listaAtendentes.forEach(a => {
+                            optionsAtendentes += `<option value="${a.nome}">${a.nome}</option>`;
+                        });
+                        
+                        let selectResponsavel = `<select class="sel-resp-inline" id="mat-resp-${idx}">${optionsAtendentes}</select>`;
+                        let labelBotao = etapaAlvoModal === 'COMPRA' ? 'Enviar p/ Receb.' : 'Enviar p/ Prod.';
+                        
+                        interfaceAcao = `
+                            ${selectResponsavel}
+                            <input type="number" min="0" max="100" class="input-pct" id="mat-pct-${idx}" value="${m[`${actKey}_pct`] || 0}" placeholder="%">
+                            <button type="button" class="btn-inline-fase" onclick="avancarMaterialIndividual(${idx})">${labelBotao}</button>
+                        `;
+                    } else {
+                        let msgBloqueioDono = (!usuarioEhResponsavel && !apenasLeitura && currentEtapaMat === etapaAlvoModal) ? `<div style="font-size:0.72rem; color:red; font-weight:bold; margin-top:2px;">🔒 Exclusivo de: ${responsavelFaseMaterial}</div>` : '';
+                        interfaceAcao = `
+                            <div style="font-size:0.82em; color:#666; display:flex; flex-direction:column; align-items:flex-end; margin-left:auto; gap:2px;">
+                                <div><b>Resp atual:</b> ${m[`${actKey}_resp`] || '-'} | <b>Progresso:</b> ${m[`${actKey}_pct` ] || 0}%</div>
+                                <div style="font-size:0.72rem; color:#999;">I: ${formatarDataHora(m[`${actKey}_inicio`])} | F: ${formatarDataHora(m[`${actKey}_fim`])}</div>
+                                ${msgBloqueioDono}
+                            </div>
+                        `;
+                    }
+
+                    let txtRecebidoDe = "";
+                    let txtResponsavel = "";
+                    let txtEncaminhadoPara = "";
+                    let classeCorEtapa = "";
+                    let dataRecebimentoCompleta = "";
+
+                    if(etapaAlvoModal === 'COMPRA') {
+                        classeCorEtapa = "mat-box-compra";
+                        txtRecebidoDe = m.lista_resp || responsavelListaPadrao;
+                        txtResponsavel = m.compra_resp || "Pendente";
+                        txtEncaminhadoPara = m.receb_resp || "Pendente";
+                        dataRecebimentoCompleta = m.compra_inicio || m.lista_fim || procAtual.criado_em;
+                    } else if(etapaAlvoModal === 'RECEBIMENTO') {
+                        classeCorEtapa = "mat-box-recebimento";
+                        txtRecebidoDe = m.compra_resp || m.lista_resp || responsavelListaPadrao;
+                        txtResponsavel = m.receb_resp || "Pendente";
+                        txtEncaminhadoPara = m.prod_resp || "Pendente";
+                        dataRecebimentoCompleta = m.receb_inicio || m.compra_fim || m.lista_fim || procAtual.criado_em;
+                    }
+
+                    html += `
+                    <div class="material-box-container ${classeCorEtapa}">
+                        <div class="material-row-top">
+                            <div style="width:130px; font-weight:bold; font-size:0.85em; overflow:hidden; text-overflow:ellipsis;" title="${m.descricao}">${m.descricao}</div>
+                            ${badgeEtapa}
+                            <input type="text" class="input-obs" id="mat-obs-${idx}" value="${m[`${actKey}_obs`] || ''}" placeholder="Sem observações..." ${disabledAttr}>
+                            ${inputPrevisaoHtml}
+                            ${interfaceAcao}
+                        </div>
+                        <div class="material-audit-grid grid-3-cols">
+                            <div class="audit-item"><b>Recebido de:</b><span>${txtRecebidoDe}</span><small style="color:#888;">${formatarDataHora(dataRecebimentoCompleta)}</small></div>
+                            <div class="audit-item"><b>Responsável:</b><span>${txtResponsavel}</span><small style="color:#888;">${m[`${actKey}_fim`] ? formatarDataHora(m[`${actKey}_fim`]) : 'Em andamento'}</small></div>
+                            <div class="audit-item"><b>Encaminhado para:</b><span>${txtEncaminhadoPara}</span></div>
+                        </div>
+                    </div>`;
+                }
+            });
+            
+            div.innerHTML = html || "<p style='color:#999; font-size:0.85em;'>Nenhum material pendente ou enviado para esta etapa ainda.</p>";
+        };
+
+        window.avancarMaterialIndividual = async (idx) => {
+            let etapaAlvoModal = procAtual.etapa_modal_carregada; 
+            let ts = new Date().toISOString();
+            let mats = [...(procAtual.materiais || [])];
+            let m = mats[idx];
+            let updatePayload = {};
+            
+            let responsavelListaPadrao = procAtual.lista?.atendente || procAtual.responsavel_pcp || procAtual.atendente_criador || nomeUsuarioLogado || "";
+
+            if (etapaAlvoModal === 'LISTA') {
+                let respSelect = document.getElementById(`mat-resp-${idx}`);
+                let obsInput = document.getElementById(`mat-obs-${idx}`);
+                
+                let resp = respSelect ? respSelect.value : '';
+                let obs = obsInput ? obsInput.value : '';
+
+                if (!resp) return alert("Selecione quem será o responsável pela Compra deste material.");
+
+                m.lista_obs = obs;
+                m.lista_resp = responsavelListaPadrao;
+                m.lista_fim = ts;
+                m.etapa_material = 'COMPRA';
+
+                m.compra_pct = 0;
+                m.compra_obs = "";
+                m.compra_resp = resp;
+                m.compra_inicio = ts;
+
+            } else if (etapaAlvoModal === 'PRODUCAO') {
+                let pctInput = document.getElementById(`mat-pct-${idx}`);
+                let obsInput = document.getElementById(`mat-obs-${idx}`);
+                let pct = pctInput ? parseInt(pctInput.value) || 0 : 0;
+
+                if (pct !== 100) return alert("Para concluir este componente na produção, o progresso deve ser 100%.");
+
+                m.prod_pct = 100;
+                if (obsInput) m.prod_obs = obsInput.value;
+                m.prod_fim = ts;
+                m.etapa_material = 'CONCLUIDO';
+
+            } else {
+                let actKey = etapaAlvoModal === 'COMPRA' ? 'compra' : 'receb';
+                let nextFase = etapaAlvoModal === 'COMPRA' ? 'RECEBIMENTO' : 'PRODUCAO';
+                let nextActKey = nextFase === 'RECEBIMENTO' ? 'receb' : 'prod';
+
+                let pctInput = document.getElementById(`mat-pct-${idx}`);
+                let obsInput = document.getElementById(`mat-obs-${idx}`);
+                let respSelect = document.getElementById(`mat-resp-${idx}`);
+                let prevInput = document.getElementById(`mat-prev-${idx}`);
+
+                let pct = pctInput ? parseInt(pctInput.value) || 0 : 0;
+                let obs = obsInput ? obsInput.value : '';
+                let resp = respSelect ? respSelect.value : '';
+
+                if (pct !== 100) return alert("Para avançar este material individualmente, o progresso deve ser 100%.");
+                if (!resp) return alert("Selecione o responsável específico para a próxima etapa.");
+
+                if (etapaAlvoModal === 'COMPRA' && prevInput) {
+                    m.prev_recebimento = prevInput.value;
+                }
+
+                m[`${actKey}_pct`] = pct;
+                m[`${actKey}_obs`] = obs;
+                m[`${actKey}_resp`] = resp;
+                m[`${actKey}_fim`] = ts;
+                m.etapa_material = nextFase;
+
+                m[`${nextActKey}_pct`] = 0; 
+                m[`${nextActKey}_resp`] = resp;
+                m[`${nextActKey}_obs`] = "";
+                m[`${nextActKey}_inicio`] = ts; 
+            }
+
+            let todosEtapaConcluida = true;
+            mats.forEach(material => {
+                if (material.etapa_material === procAtual.etapa_atual) {
+                    todosEtapaConcluida = false;
+                }
+            });
+
+            updatePayload.materiais = mats;
+
+            if (todosEtapaConcluida && procAtual.etapa_atual !== 'PRODUCAO' && procAtual.etapa_atual !== 'CONCLUIDO') {
+                let nextGlobalFase = procAtual.etapa_atual === 'LISTA' ? 'COMPRA' : (procAtual.etapa_atual === 'COMPRA' ? 'RECEBIMENTO' : 'PRODUCAO');
+                let nextDbKey = nextGlobalFase === 'COMPRA' ? 'compra' : (nextGlobalFase === 'RECEBIMENTO' ? 'recebimento' : 'producao');
+                
+                updatePayload.etapa_atual = nextGlobalFase;
+                updatePayload[`${procAtual.etapa_atual.toLowerCase()}.fim`] = ts;
+                updatePayload[`${nextDbKey}.inicio`] = ts;
+                updatePayload[`${nextDbKey}.atendente`] = m[`${nextGlobalFase.toLowerCase()}_resp`] || m.compra_resp || '';
+            }
+
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), updatePayload);
+                alert(`Componente atualizado com sucesso!`);
+                let fAlvo = procAtual.etapa_modal_carregada;
+                renderMateriaisProcessoLocal(fAlvo === 'LISTA' ? 'lista' : (fAlvo === 'COMPRA' ? 'compra' : (fAlvo === 'RECEBIMENTO' ? 'receb' : 'prod')), false);
+                renderProcessos();
+            } catch(e) { alert("Erro ao avançar material: " + e.message); }
+        };
+
+        window.finalizarObraProducao = async () => {
+            let mVal = parseInt(document.getElementById('prod-marcos-produzidos').value) || 0;
+            let fVal = parseInt(document.getElementById('prod-folhas-produzidas').value) || 0;
+            let mTotal = procAtual.qtd_marcos || 0;
+            let fTotal = procAtual.qtd_folhas || 0;
+            
+            if(mVal < mTotal || fVal < fTotal) {
+                return alert("Não é possível concluir. A quantidade de Marcos e Folhas produzidas deve ser 100% em relação aos totais cadastrados.");
+            }
+
+            if(!confirm("Deseja encerrar em 100% e declarar este processo como CONCLUÍDO?")) return;
+
+            let ts = new Date().toISOString();
+            let updatePayload = {
+                marcos_produzidos: mVal,
+                folhas_produzidos: fVal,
+                etapa_atual: 'CONCLUIDO',
+                "produao.fim": ts,
+                "producao.fim": ts
+            };
+
+            let mats = [...(procAtual.materiais || [])];
+            mats.forEach(m => {
+                m.etapa_material = 'CONCLUIDO';
+                m.prod_pct = 100;
+                m.prod_fim = ts;
+            });
+            updatePayload.materiais = mats;
+
+            try {
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), updatePayload);
+                fecharModal();
+                alert("Lote/Obra concluído com sucesso!");
+                renderProcessos();
+            } catch(e) { alert("Erro ao finalizar obra: " + e.message); }
+        };
+
+        window.fecharModal = () => document.getElementById('dialog-processo').close();
+        window.avancarProcesso = async () => { return; };
+
+        function renderDashboard() {
+            const fTipo = document.getElementById('f-tipo').value;
+            const fEtapa = document.getElementById('f-etapa').value;
+            const fResp = document.getElementById('f-resp').value;
+            const fStatusResp = document.getElementById('f-status-resp').value;
+
+            const filtrados = listaProcessos.filter(p => aplicarFiltrosGerais(p, fTipo, fEtapa, fResp, fStatusResp));
+
+            let dataEtapas = { 'LISTA':0, 'COMPRA':0, 'RECEBIMENTO':0, 'PRODUCAO':0, 'CONCLUIDO':0 };
+            let dataTipos = { 'PVC':0, 'ALUMÍNIO':0 };
+
+            filtrados.forEach(p => {
+                dataEtapas[p.etapa_atual]++;
+                if(p.tipo === 'PVC' || p.tipo === 'ALUMÍNIO') {
+                    dataTipos[p.tipo]++;
+                }
+            });
+
+            if(chartE) chartE.destroy();
+            chartE = new Chart(document.getElementById('chartEtapas').getContext('2d'), {
+                type: 'bar',
+                data: { labels: Object.keys(dataEtapas), datasets: [{ data: Object.values(dataEtapas), backgroundColor: '#20c997' }] },
+                options: { plugins:{legend:{display:false}}, responsive: true, maintainAspectRatio: false }
+            });
+
+            if(chartT) chartT.destroy();
+            chartT = new Chart(document.getElementById('chartTipos').getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(dataTipos), datasets: [{ data: Object.values(dataTipos), backgroundColor: ['#007bff', '#fd7e14'] }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const tbodyPrazos = document.getElementById('tb-prazos'); if(!tbodyPrazos) return; tbodyPrazos.innerHTML = '';
+
+            filtrados.forEach(p => {
+                let dataBaseStr = p.data_medicao || null;
+                if(p.medicao_realizada) {
+                    if(!dataBaseStr || new Date(p.medicao_realizada + 'T00:00:00') > new Date(dataBaseStr)) { dataBaseStr = p.medicao_realizada + 'T00:00:00'; }
+                }
+                if(!dataBaseStr) {
+                    tbodyPrazos.innerHTML += `<tr><td>${p.cliente_nome}</td><td>${p.tipo}</td><td colspan="4" style="color:#999;">Aguardando inserção de data de medição</td></tr>`;
+                    return;
+                }
+
+                let dtBase = new Date(dataBaseStr);
+                let dtLimite = new Date(dtBase.getTime()); dtLimite.setDate(dtLimite.getDate() + 70);
+                let hoje = new Date(); hoje.setHours(0,0,0,0);
+                let diffDias = Math.ceil((dtLimite - hoje) / (1000 * 60 * 60 * 24));
+
+                let statusText = "No Prazo"; let statusColor = "var(--success)";
+                if(p.etapa_atual === 'CONCLUIDO') { statusText = "Finalizado"; statusColor = "var(--primary)"; }
+                else if(diffDias < 0) { statusText = "Atrasado"; statusColor = "red"; }
+                else if(diffDias <= 15) { statusText = "Alerta (Crítico)"; statusColor = "var(--alu)"; }
+
+                tbodyPrazos.innerHTML += `<tr style="border-bottom: 1px solid #eee;"><td><b>${p.cliente_nome}</b></td><td>${p.tipo}</td><td>${dtBase.toLocaleDateString('pt-BR')}</td><td>${dtLimite.toLocaleDateString('pt-BR')}</td><td style="font-weight:bold; color:${p.etapa_atual === 'CONCLUIDO' ? '-' : diffDias+'d'};">${p.etapa_atual === 'CONCLUIDO' ? '-' : diffDias+'d'}</td><td><span style="background:${statusColor}; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:bold;">${statusText}</span></td></tr>`;
+            });
+        }
+        
+        window.renderDashboard = renderDashboard;
+        window.renderProcessos = renderProcessos;
+    </script>
+</body>
+</html>
