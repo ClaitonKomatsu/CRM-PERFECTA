@@ -688,10 +688,19 @@
                     <label>Nome *</label><input type="text" id="atend-nome" required>
                     <label>Email</label><input type="email" id="atend-email" required>
                     <label>Whats</label><input type="text" id="atend-whats" placeholder="(99) 99999-9999">
+                    <label>Departamento *</label>
+                    <select id="atend-depto" required>
+                        <option value="Todos">Todos</option>
+                        <option value="Nenhum">Nenhum</option>
+                        <option value="Lista">Lista</option>
+                        <option value="Compra">Compra</option>
+                        <option value="Recebimento">Recebimento</option>
+                        <option value="Produção">Produção</option>
+                    </select>
                     <button type="submit" class="btn-save" id="btn-save-atendente">Salvar</button>
                 </form>
             </div>
-            <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th>Depto</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
         </div>
     </section>
 
@@ -1040,6 +1049,7 @@
             document.getElementById('atend-nome').value = a.nome || "";
             document.getElementById('atend-email').value = a.email || "";
             document.getElementById('atend-whats').value = a.whats || "";
+            document.getElementById('atend-depto').value = a.depto || "Todos";
             document.getElementById('btn-save-atendente').innerText = "Atualizar Atendente";
         };
 
@@ -1416,7 +1426,7 @@
                         if(tb){
                             const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button>` : '';
                             const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button>` : '';
-                            tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarAtend('${a.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${a.nome}</td><td>${a.whats||'-'}</td><td>${btnEdit} ${btnDel}</td></tr>`;
+                            tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarAtend('${a.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${a.nome}</td><td>${a.whats||'-'}</td><td>${a.depto||'Todos'}</td><td>${btnEdit} ${btnDel}</td></tr>`;
                         }
                         const opt = `<option value="${a.nome}">${a.nome}</option>`;
                         selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
@@ -1718,7 +1728,7 @@
                 if (skipRender) return;
 
                 const btnNovo = (indexInTimeline === 0 && currentPerms.leads.gravar) ? `<button class="btn-icon" onclick="novoHistBaseado(${h.idx})" title="Novo Histórico">➕</button>` : '';
-                let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.responsavel_id : (h.contato_tipo === 'Adm Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
+                let targetId = (h.contato_tipo === 'Proprietário') ? leadAtual.cliente_id : (h.contato_tipo === 'Arquiteto') ? leadAtual.arquiteto_id : (h.contato_tipo === 'Responsável Obra') ? leadAtual.adm_obra_id : (h.contato_tipo === 'Construtora') ? leadAtual.construtora_id : h.contato_id;
                 const contactData = listaClientes.find(c => c.id === targetId); const phone = contactData ? (contactData.telefone || "").replace(/\D/g, '') : ''; const btnWhats = phone ? `<a href="https://wa.me/55${phone}" target="_blank" style="text-decoration:none; margin-left:10px; font-size:1.1em;">🟢</a>` : '';
                 
                 let orcIntegrationHtml = '';
@@ -1895,7 +1905,7 @@
         window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
         
         document.getElementById('form-cliente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, city:document.getElementById('cli-cidade').value || "", cidade:document.getElementById('cli-cidade').value, address:document.getElementById('cli-endereco').value || "", endereco:document.getElementById('cli-endereco').value }; if(id) await updateDoc(doc(db,"clientes",id),d); else await addDoc(collection(db,"clientes"),d); document.getElementById('form-cliente').reset(); document.getElementById('cli-id').value=''; };
-        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
+        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value, depto:document.getElementById('atend-depto').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
         
         document.getElementById('form-lead-main').onsubmit = async(e) => { 
             e.preventDefault(); if(!currentPerms.leads.gravar) return; const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
