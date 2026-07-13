@@ -23,6 +23,8 @@
         .view-section { display: none; flex: 1; overflow: hidden; padding: 20px; }
         .view-section.active { display: flex; flex-direction: column; }
         
+        #view-dashboard.active { overflow-y: auto; display: block; }
+
         .split-layout { display: flex; gap: 20px; height: 100%; }
         .form-area { width: 350px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .list-area { flex: 1; background: white; padding: 20px; border-radius: 8px; overflow-y: auto; }
@@ -58,6 +60,7 @@
 
         .history-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; background: #f8f9fa; padding: 10px; border-radius: 6px; font-size: 0.75rem; color: #555; }
         
+        /* Nova Regra: Oculta colunas desnecessárias e exibe apenas Produção em tamanho total para o login de producao */
         body.user-producao-restrito .history-grid { grid-template-columns: 1fr; }
         body.user-producao-restrito .history-col-lista,
         body.user-producao-restrito .history-col-compra,
@@ -137,9 +140,9 @@
     <nav id="main-nav" style="display: none;">
         <div class="brand">🏭 PCP Perfecta</div>
         <div class="nav-buttons">
-            <button onclick="switchView('gestao')" id="btn-gestao" class="active">📋 Gestão de Produção</button>
-            <button onclick="switchView('materiais')" id="btn-materiais">📦 Cadastro de Materiais</button>
-            <button onclick="switchView('dashboard')" id="btn-dashboard">📈 Dashboard</button>
+            <button onclick="window.switchView('gestao')" id="btn-gestao" class="active">📋 Gestão de Produção</button>
+            <button onclick="window.switchView('materiais')" id="btn-materiais">📦 Cadastro de Materiais</button>
+            <button onclick="window.switchView('dashboard')" id="btn-dashboard">📈 Dashboard</button>
         </div>
         <div style="font-size:0.85em; color: white;">
             <span id="user-info"></span> | <a href="#" onclick="logoutApp()" style="color:#ffc107; font-weight: bold; text-decoration: none;">Sair</a>
@@ -169,27 +172,34 @@
 
     <section id="view-gestao" class="view-section active">
         <div class="filter-bar">
+            <!-- Filtro de Obra Específica ou Todas -->
+            <div style="display:flex; flex-direction:column;">
+                <label style="margin-bottom:4px;">Selecionar Obra:</label>
+                <select id="f-obra-especifica" onchange="renderProcessos()" style="width:250px; margin:0;">
+                    <option value="todas">Todas as Obras</option>
+                </select>
+            </div>
             <div style="display:flex; flex-direction:column;" class="filtro-restrito-esconder">
                 <label style="margin-bottom:4px;">Filtrar Tipo:</label>
                 <select id="f-tipo" onchange="renderProcessos()" style="width:auto; margin:0;"><option value="todos">Todos</option><option value="PVC">PVC</option><option value="ALUMÍNIO">Alumínio</option></select>
             </div>
-            <div style="display:flex; flex-direction:column;" class="filtro-restrito-esconder">
+            <div style="display:flex; flex-direction:column;">
                 <label style="margin-bottom:4px;">Etapa do Processo:</label>
                 <select id="f-etapa" onchange="renderProcessos()" style="width:auto; margin:0;">
                     <option value="ativos">Todas Ativas</option>
                     <option value="todos">TODAS (Incluindo Concluídas)</option>
-                    <option value="LISTA">Lista</option>
-                    <option value="COMPRA">Compra</option>
-                    <option value="RECEBIMENTO">Recebimento</option>
-                    <option value="PRODUCAO">Produção</option>
-                    <option value="CONCLUIDO">Concluídos</option>
+                    <option value="LISTA" class="filtro-restrito-esconder">Lista</option>
+                    <option value="COMPRA" class="filtro-restrito-esconder">Compra</option>
+                    <option value="RECEBIMENTO" class="filtro-restrito-esconder">Recebimento</option>
+                    <option value="PRODUCAO" class="filtro-restrito-esconder">Produção</option>
+                    <option value="CONCLUIDO" class="filtro-restrito-esconder">Concluídos</option>
                 </select>
             </div>
             <div style="display:flex; flex-direction:column;" class="filtro-restrito-esconder">
                 <label style="margin-bottom:4px;">Filtrar por Responsável:</label>
                 <select id="f-resp" onchange="renderProcessos()" style="width:180px; margin:0;"><option value="todos">Todos os Responsáveis</option></select>
             </div>
-            <div style="display:flex; flex-direction:column;">
+            <div style="display:flex; flex-direction:column;" class="filtro-restrito-esconder">
                 <label style="margin-bottom:4px;">Status do Responsável:</label>
                 <select id="f-status-resp" onchange="renderProcessos()" style="width:auto; margin:0;">
                     <option value="todos">Todos (Pend. / Concl.)</option>
@@ -232,7 +242,7 @@
                 </select>
             </div>
         </div>
-        <div class="dashboard-grid" style="flex:1; overflow-y:auto; margin-top:15px; padding-right:5px;">
+        <div class="dashboard-grid" style="margin-top:15px; padding-right:5px;">
             <div class="chart-box">
                 <h3 style="text-align:center; margin-top:0;">Obras por Etapa</h3>
                 <canvas id="chartEtapas"></canvas>
@@ -245,7 +255,7 @@
                 <h3 style="text-align:center; margin-top:0;">Volume PVC vs Alumínio</h3>
                 <canvas id="chartTipos"></canvas>
             </div>
-            <div class="chart-box full-box" style="overflow-y: auto;">
+            <div class="chart-box full-box">
                 <h3 style="text-align:center; margin-top:0;">Prazos de Entrega, Conclusão e Lead Time</h3>
                 <table style="width:100%; border-collapse: collapse;">
                     <thead>
@@ -328,60 +338,42 @@
         let usuarioRestritoProducao = false;
 
         const ORDEM_ETAPAS = { 'LISTA': 1, 'COMPRA': 2, 'RECEBIMENTO': 3, 'PRODUCAO': 4, 'CONCLUIDO': 5 };
-
-        // --- SISTEMA RESTRITO E BLINDADO DE PERMISSÕES ---
         
-        // Remove acentos, caracteres especiais e todos os espaços para uma comparação à prova de erros
         const normalizarTextoLimpo = (s) => s ? String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s/g, "").trim().toLowerCase() : "";
 
-        // Dado um Nome ou E-mail, procura no CRM e devolve SEMPRE o E-mail real dele.
         function getEmailDoResponsavel(nomeOuEmail) {
             if (!nomeOuEmail) return "";
             let strBase = normalizarTextoLimpo(nomeOuEmail);
-            
             if (strBase.includes("@")) return strBase;
-            
             let atendenteEncontrado = listaAtendentes.find(a => 
                 normalizarTextoLimpo(a.nome) === strBase || 
                 normalizarTextoLimpo(a.email) === strBase
             );
-            
             return (atendenteEncontrado && atendenteEncontrado.email) ? normalizarTextoLimpo(atendenteEncontrado.email) : strBase;
         }
 
         function isLoggedUserResponsible(respNameOrEmail) {
             if (!auth.currentUser) return false;
-            
+            if (usuarioRestritoProducao) return false; 
             const emailLogado = normalizarTextoLimpo(auth.currentUser.email);
             if (!emailLogado) return false;
-
             let emailDaLinha = getEmailDoResponsavel(respNameOrEmail);
             if (emailDaLinha && emailLogado === emailDaLinha) return true;
-            
             const nomeNorm = normalizarTextoLimpo(nomeUsuarioLogado);
             const respNorm = normalizarTextoLimpo(respNameOrEmail);
             if (nomeNorm && respNorm && nomeNorm === respNorm) return true;
-            
             return false;
         }
 
-        // --- CORREÇÃO DO FILTRO DE DEPARTAMENTOS ---
         function obterAtendentesPorDepartamentoOptions(deptoAlvo) {
             let alvo = normalizarTextoLimpo(deptoAlvo);
-            
             let filtrados = listaAtendentes.filter(a => {
                 let d1 = normalizarTextoLimpo(a.depto);
                 let d2 = normalizarTextoLimpo(a.departamento);
-                // Utiliza includes para aproximação segura (ex: 'compras' engloba 'compra', 'setor de recebimento' engloba 'recebimento')
                 return (d1 && d1.includes(alvo)) || (d2 && d2.includes(alvo));
             });
-            
-            // Adicionado a opção default para forçar uma seleção e removida a fuga de lista vazia.
             let html = '<option value="">Selecionar...</option>';
-            filtrados.forEach(a => { 
-                html += `<option value="${a.nome}">${a.nome}</option>`; 
-            });
-            
+            filtrados.forEach(a => { html += `<option value="${a.nome}">${a.nome}</option>`; });
             return html;
         }
 
@@ -471,7 +463,7 @@
                     document.getElementById('btn-materiais').style.display = 'none';
                     document.querySelectorAll('.filtro-restrito-esconder').forEach(el => el.style.display = 'none');
                     const elFEtapa = document.getElementById('f-etapa');
-                    if (elFEtapa) elFEtapa.value = "PRODUCAO";
+                    if (elFEtapa) elFEtapa.value = "ativos";
                 } else {
                     document.body.classList.remove('user-producao-restrito');
                     document.getElementById('btn-materiais').style.display = 'block';
@@ -507,6 +499,23 @@
             if(v==='dashboard') renderDashboard();
         };
 
+        function atualizarSelectObras() {
+            const selectObra = document.getElementById('f-obra-especifica');
+            if (!selectObra) return;
+            const valorAtual = selectObra.value;
+            
+            let html = '<option value="todas">Todas as Obras</option>';
+            // Ordena os nomes das obras
+            const obrasOrdenadas = [...listaProcessos].sort((a,b) => a.cliente_nome.localeCompare(b.cliente_nome));
+            obrasOrdenadas.forEach(p => {
+                html += `<option value="${p.id}">${p.cliente_nome}</option>`;
+            });
+            selectObra.innerHTML = html;
+            if ([...selectObra.options].some(o => o.value === valorAtual)) {
+                selectObra.value = valorAtual;
+            }
+        }
+
         function iniciarListeners() {
             onSnapshot(collection(db, "pcp_materiais"), (snap) => {
                 listaMaterials = snap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b)=>a.descricao.localeCompare(b.descricao));
@@ -525,6 +534,7 @@
                     if (!data.criado_em && data.lista && data.lista.inicio) data.criado_em = data.lista.inicio;
                     return { id: d.id, ...data };
                 });
+                atualizarSelectObras();
                 renderProcessos();
                 
                 if (procAtual) {
@@ -598,29 +608,39 @@
         }
 
         function aplicarFiltrosGerais(p, fTipo, fEtapa, fRespNome, fStatusResp) {
-            if (usuarioRestritoProducao && document.getElementById('view-gestao').classList.contains('active')) {
-                let temMaterialNaProducao = p.materiais && p.materiais.some(m => m.etapa_material === "PRODUCAO");
-                if (p.etapa_atual !== "PRODUCAO" && !temMaterialNaProducao) return false;
-            } else {
-                if(fTipo !== 'todos' && p.tipo !== fTipo) return false;
+            const fObraEspecifica = document.getElementById('f-obra-especifica') ? document.getElementById('f-obra-especifica').value : 'todas';
+            
+            // Filtro por obra específica (para o usuário de produção isolar ou ver todas)
+            if (fObraEspecifica !== 'todas' && p.id !== fObraEspecifica) return false;
+
+            if (usuarioRestritoProducao) {
                 if(fEtapa === 'ativos') {
                     if(p.etapa_atual === 'CONCLUIDO') return false;
                 } else if(fEtapa !== 'todos') {
                     let temMaterialNaEtapaFiltrada = p.materiais && p.materiais.some(m => m.etapa_material === fEtapa);
                     if(p.etapa_atual !== fEtapa && !temMaterialNaEtapaFiltrada) return false;
                 }
-                if(fRespNome !== 'todos') {
-                    let respsDaEtapa = extrairTodosResponsaveisDaEtapa(p, p.etapa_atual);
-                    if (p.materiais) {
-                        p.materiais.forEach(m => {
-                            if(m.lista_resp) respsDaEtapa.push(m.lista_resp);
-                            if(m.compra_resp) respsDaEtapa.push(m.compra_resp);
-                            if(m.receb_resp) respsDaEtapa.push(m.receb_resp);
-                            if(m.prod_resp) respsDaEtapa.push(m.prod_resp);
-                        });
-                    }
-                    if (!respsDaEtapa.includes(fRespNome)) return false;
+                return true;
+            }
+
+            if(fTipo !== 'todos' && p.tipo !== fTipo) return false;
+            if(fEtapa === 'ativos') {
+                if(p.etapa_atual === 'CONCLUIDO') return false;
+            } else if(fEtapa !== 'todos') {
+                let temMaterialNaEtapaFiltrada = p.materiais && p.materiais.some(m => m.etapa_material === fEtapa);
+                if(p.etapa_atual !== fEtapa && !temMaterialNaEtapaFiltrada) return false;
+            }
+            if(fRespNome !== 'todos') {
+                let respsDaEtapa = extrairTodosResponsaveisDaEtapa(p, p.etapa_atual);
+                if (p.materiais) {
+                    p.materiais.forEach(m => {
+                        if(m.lista_resp) respsDaEtapa.push(m.lista_resp);
+                        if(m.compra_resp) respsDaEtapa.push(m.compra_resp);
+                        if(m.receb_resp) respsDaEtapa.push(m.receb_resp);
+                        if(m.prod_resp) respsDaEtapa.push(m.prod_resp);
+                    });
                 }
+                if (!respsDaEtapa.includes(fRespNome)) return false;
             }
 
             if (fStatusResp !== 'todos') {
@@ -840,9 +860,9 @@
             if(!container) return; container.innerHTML = '';
             
             const fTipo = usuarioRestritoProducao ? 'todos' : document.getElementById('f-tipo').value;
-            const fEtapa = usuarioRestritoProducao ? 'PRODUCAO' : document.getElementById('f-etapa').value;
+            const fEtapa = document.getElementById('f-etapa').value;
             const fResp = usuarioRestritoProducao ? 'todos' : document.getElementById('f-resp').value;
-            const fStatusResp = document.getElementById('f-status-resp').value;
+            const fStatusResp = usuarioRestritoProducao ? 'todos' : document.getElementById('f-status-resp').value;
 
             const filtrados = listaProcessos.filter(p => aplicarFiltrosGerais(p, fTipo, fEtapa, fResp, fStatusResp));
 
@@ -851,9 +871,8 @@
                 return;
             }
 
-            // Exclusão de Obras apenas para Admins
             const emailLogadoAtual = auth.currentUser && auth.currentUser.email ? normalizarTextoLimpo(auth.currentUser.email) : "";
-            let isMaster = (emailLogadoAtual === "pcpperfectaesquadriascombr" || emailLogadoAtual === "williamperfectaesquadriascombr"); // Tratado sem o @ pelo normalizer
+            let isMaster = (emailLogadoAtual === "pcpperfectaesquadriascombr" || emailLogadoAtual === "williamperfectaesquadriascombr");
             let isAdminDb = objetoUsuarioLogadoFirestore && (objetoUsuarioLogadoFirestore.perfil === 'admin' || objetoUsuarioLogadoFirestore.admin === true);
             let usuarioEhAdminPcp = isMaster || isAdminDb;
 
@@ -1003,6 +1022,8 @@
 
             if (usuarioRestritoProducao) apenasLeitura = true;
 
+            document.getElementById('mod-titulo').innerText = apenasLeitura ? `Consulta Histórica - Detalhes da Etapa: ${etapaAlvo}` : `Gestão - Gerenciando Painel da Etapa: ${etapaAlvo}`;
+
             document.getElementById('mod-cli').innerText = procAtual.cliente_nome;
             document.getElementById('mod-tipo').innerText = procAtual.tipo;
             document.getElementById('mod-medicao').innerText = procAtual.data_medicao ? new Date(procAtual.data_medicao).toLocaleDateString('pt-BR') : '-';
@@ -1031,18 +1052,10 @@
             area.innerHTML = '';
             if(btnAvancar) btnAvancar.style.display = 'none';
             if(btnConcluirObra) btnConcluirObra.style.display = 'none';
+            if(btnSalvarMedicao) btnSalvarMedicao.style.display = apenasLeitura ? 'none' : 'inline-block';
             
-            let bannerLeitura = apenasLeitura ? `<div style="background:#fff3cd; color:#856404; padding:10px; border-radius:6px; margin-bottom:15px; font-size: 0.9em; font-weight:bold; text-align:center; border: 1px solid #ffeeba;">👁️ MODO DE VISUALIZAÇÃO (Apenas Leitura).<br>Para alterar os dados, feche esta janela e clique no botão azul "⚙️ Gerenciar" na tela principal.</div>` : '';
+            let bannerLeitura = apenasLeitura ? `<div style="background:#fff3cd; color:#856404; padding:10px; border-radius:6px; margin-bottom:15px; font-size: 0.9em; font-weight:bold; text-align:center; border: 1px solid #ffeeba;">👁️ MODO DE VISUALIZAÇÃO (Apenas Leitura).</div>` : '';
 
-            if (apenasLeitura) {
-                document.getElementById('mod-titulo').innerText = `Consulta Histórica - Detalhes da Etapa: ${etapaAlvo}`;
-                if(btnSalvarMedicao) btnSalvarMedicao.style.display = 'none';
-            } else {
-                document.getElementById('mod-titulo').innerText = `Gestão - Gerenciando Painel da Etapa: ${etapaAlvo}`;
-                if(btnSalvarMedicao) btnSalvarMedicao.style.display = 'inline-block';
-            }
-
-            // Permissão de Inclusão de Novos Materiais (Apenas Dano da Lista)
             let responsavelListaPadrao = procAtual.lista?.atendente || procAtual.responsavel_pcp || procAtual.atendente_criador || "";
             let temPermissaoCabecalhoLista = isLoggedUserResponsible(responsavelListaPadrao);
 
@@ -1199,7 +1212,7 @@
 
         window.removerMaterialLocal = async (idx) => {
             if(!procAtual || !procAtual.materiais || usuarioRestritoProducao) return;
-            if(!confirm(`Deseja realmente remover the material "${procAtual.materiais[idx].descricao}" deste lote de produção?`)) return;
+            if(!confirm(`Deseja realmente remover o material "${procAtual.materiais[idx].descricao}" deste lote de produção?`)) return;
             procAtual.materiais.splice(idx, 1);
             try {
                 await updateDoc(doc(db, "pcp_processos", procAtual.id), { materiais: procAtual.materiais });
@@ -1502,7 +1515,7 @@
 
             try {
                 await updateDoc(doc(db, "pcp_processos", procAtual.id), updatePayload);
-                alert(`Componente atualizado com sucesso!`);
+                alert(`Componente updated com sucesso!`);
                 let fAlvo = procAtual.etapa_modal_carregada;
                 renderMateriaisProcessoLocal(fAlvo === 'LISTA' ? 'lista' : (fAlvo === 'COMPRA' ? 'compra' : (fAlvo === 'RECEBIMENTO' ? 'receb' : 'prod')), false);
                 renderProcessos();
@@ -1540,8 +1553,8 @@
         function renderDashboard() {
             const fTipo = document.getElementById('db-f-tipo').value;
             const fEtapa = document.getElementById('db-f-etapa').value;
-            const fResp = document.getElementById('db-f-resp').value;
-            const fStatusResp = document.getElementById('db-f-status-resp').value;
+            const fResp = usuarioRestritoProducao ? 'todos' : document.getElementById('db-f-resp').value;
+            const fStatusResp = usuarioRestritoProducao ? 'todos' : document.getElementById('db-f-status-resp').value;
             const filtrados = listaProcessos.filter(p => aplicarFiltrosGerais(p, fTipo, fEtapa, fResp, fStatusResp));
 
             let dataEtapas = { 'LISTA':0, 'COMPRA':0, 'RECEBIMENTO':0, 'PRODUCAO':0, 'CONCLUIDO':0 };
@@ -1610,8 +1623,7 @@
                 let dtLimite = new Date(dtBase.getTime()); dtLimite.setDate(dtLimite.getDate() + 70);
                 let dtNegociada = p.data_final_negociada ? new Date(p.data_final_negociada + 'T00:00:00') : null;
                 
-                let maiorDataFinal = dtLimite;
-                if (dtNegociada && dtNegociada > maiorDataFinal) maiorDataFinal = dtNegociada;
+                let maiorDataFinal = dtNegociada ? dtNegociada : dtLimite;
 
                 let hoje = new Date(); hoje.setHours(0,0,0,0);
                 let diffDias = Math.ceil((maiorDataFinal - hoje) / (1000 * 60 * 60 * 24));
