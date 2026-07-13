@@ -117,6 +117,10 @@
         .perm-group h4 { margin: 0 0 10px 0; font-size: 0.9em; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
         .perm-row { display: flex; gap: 15px; font-size: 0.85em; }
         .perm-row label { display: flex; align-items: center; gap: 5px; margin: 0; font-weight: normal; cursor: pointer; }
+
+        /* Estilo customizado para os checkboxes de departamento em Atendentes */
+        .deptos-checkbox-container { display: flex; flex-wrap: wrap; gap: 10px; background: #fafafa; border: 1px solid #ddd; padding: 10px; border-radius: 6px; margin-bottom: 12px; }
+        .deptos-checkbox-container label { display: flex; align-items: center; gap: 4px; margin-bottom: 0; font-weight: normal; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -524,7 +528,7 @@
                             <option value="Insucesso">Insucesso</option>
                         </select>
                         
-                        <label>Última alteração 'Realizado'</label>
+                        <label>Última alteration 'Realizado'</label>
                         <input type="text" id="hist-upd-real" readonly style="background:#f0f0f0; color:#666; font-size:0.85em;">
 
                         <label>Resumo</label><textarea id="hist-resumo" required style="height:60px;"></textarea>
@@ -688,19 +692,17 @@
                     <label>Nome *</label><input type="text" id="atend-nome" required>
                     <label>Email</label><input type="email" id="atend-email" required>
                     <label>Whats</label><input type="text" id="atend-whats" placeholder="(99) 99999-9999">
-                    <label>Departamento *</label>
-                    <select id="atend-depto" required>
-                        <option value="Todos">Todos</option>
-                        <option value="Nenhum">Nenhum</option>
-                        <option value="Lista">Lista</option>
-                        <option value="Compra">Compra</option>
-                        <option value="Recebimento">Recebimento</option>
-                        <option value="Produção">Produção</option>
-                    </select>
+                    <label>Departamento (Múltiplas Opções)</label>
+                    <div class="deptos-checkbox-container" id="atend-deptos-container">
+                        <label><input type="checkbox" name="atend-deptos" value="Lista"> Lista</label>
+                        <label><input type="checkbox" name="atend-deptos" value="Compra"> Compra</label>
+                        <label><input type="checkbox" name="atend-deptos" value="Recebimento"> Recebimento</label>
+                        <label><input type="checkbox" name="atend-deptos" value="Produção"> Produção</label>
+                    </div>
                     <button type="submit" class="btn-save" id="btn-save-atendente">Salvar</button>
                 </form>
             </div>
-            <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th>Depto</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="list-area"><h2>Atendentes</h2><div class="table-wrapper"><table id="table-atendentes"><thead><tr><th>Nome</th><th>Whats</th><th>Depto(s)</th><th style="width:80px;">Ações</th></tr></thead><tbody></tbody></table></div></div>
         </div>
     </section>
 
@@ -904,6 +906,24 @@
             orcamentos: { ver: true, gravar: true, excluir: true },
             cadastros: { ver: true, gravar: true, excluir: true }
         };
+        
+        // --- NOVA FUNÇÃO ADICIONADA: CHECAR VÍNCULO NO PCP ---
+        async function checarVinculoNoPCP(emailParaChecar) {
+            if (!emailParaChecar) return false;
+            let emailAlvo = emailParaChecar.trim().toLowerCase();
+            
+            const q = query(collection(db, "pcp_processos"));
+            const snapshot = await getDocs(q);
+            let vinculado = false;
+            
+            snapshot.forEach((docSnap) => {
+                const dataStr = JSON.stringify(docSnap.data()).toLowerCase();
+                if (dataStr.includes(emailAlvo)) {
+                    vinculado = true;
+                }
+            });
+            return vinculado;
+        }
 
         const parseM2 = (v) => {
             if (!v) return 0;
@@ -1049,13 +1069,43 @@
             document.getElementById('atend-nome').value = a.nome || "";
             document.getElementById('atend-email').value = a.email || "";
             document.getElementById('atend-whats').value = a.whats || "";
-            document.getElementById('atend-depto').value = a.depto || "Todos";
+            
+            document.querySelectorAll('input[name="atend-deptos"]').forEach(chk => chk.checked = false);
+            if (a.depto) {
+                if (Array.isArray(a.depto)) {
+                    a.depto.forEach(d => {
+                        const chk = document.querySelector(`input[name="atend-deptos"][value="${d}"]`);
+                        if (chk) chk.checked = true;
+                    });
+                } else {
+                    const chk = document.querySelector(`input[name="atend-deptos"][value="${a.depto}"]`);
+                    if (chk) chk.checked = true;
+                }
+            }
+            
             document.getElementById('btn-save-atendente').innerText = "Atualizar Atendente";
         };
 
+        // --- FUNÇÃO DE EXCLUSÃO ATUALIZADA (Validação do PCP Implementada) ---
         window.excluirAtend = async (id) => {
             if(!currentPerms.cadastros.excluir) return alert("Sem permissão para excluir.");
-            if(confirm("Deseja remover este atendente da equipe?")) await deleteDoc(doc(db, "atendentes", id));
+            
+            const atendente = listaAtendentes.find(x => x.id === id);
+            if (atendente && atendente.email) {
+                const temVinculo = await checarVinculoNoPCP(atendente.email);
+                if (temVinculo) {
+                    alert(`BLOQUEIO DE SEGURANÇA:\n\nImpossível excluir. O e-mail (${atendente.email}) já trabalhou em obras no PCP.\nSe este colaborador não atua mais na empresa, considere alterar o nome para "Inativo - [Nome]".`);
+                    return; // Interrompe a exclusão
+                }
+            }
+
+            if(confirm("Deseja remover este atendente da equipe?")) {
+                try {
+                    await deleteDoc(doc(db, "atendentes", id));
+                } catch (err) {
+                    alert("Erro ao excluir: " + err.message);
+                }
+            }
         };
 
         window.editarProcesso = (id) => {
@@ -1426,7 +1476,13 @@
                         if(tb){
                             const btnEdit = currentPerms.cadastros.gravar ? `<button class="btn-icon" onclick="event.stopPropagation(); editarAtend('${a.id}')">✏️</button>` : '';
                             const btnDel = currentPerms.cadastros.excluir ? `<button class="btn-icon" onclick="event.stopPropagation(); excluirAtend('${a.id}')" style="color:red">🗑️</button>` : '';
-                            tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarAtend('${a.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${a.nome}</td><td>${a.whats||'-'}</td><td>${a.depto||'Todos'}</td><td>${btnEdit} ${btnDel}</td></tr>`;
+                            
+                            let deptoDisplay = '-';
+                            if (a.depto) {
+                                deptoDisplay = Array.isArray(a.depto) ? a.depto.join(', ') : a.depto;
+                            }
+                            
+                            tb.innerHTML += `<tr onclick="if(${currentPerms.cadastros.gravar}) editarAtend('${a.id}')" style="${currentPerms.cadastros.gravar?'cursor:pointer':''}"><td>${a.nome}</td><td>${a.whats||'-'}</td><td>${deptoDisplay}</td><td>${btnEdit} ${btnDel}</td></tr>`;
                         }
                         const opt = `<option value="${a.nome}">${a.nome}</option>`;
                         selects.forEach(id => { const el = document.getElementById(id); if(el && el.tagName === 'SELECT') el.innerHTML += opt; });
@@ -1905,7 +1961,51 @@
         window.novoLeadDireto = () => { if(!currentPerms.leads.gravar) return; window.switchView('leads'); window.limparFormLead(); };
         
         document.getElementById('form-cliente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('cli-id').value, d={ nome_empresa:document.getElementById('cli-nome').value, tipo:document.getElementById('cli-tipo').value, status:document.getElementById('cli-status').value, telefone:document.getElementById('cli-telefone').value, email:document.getElementById('cli-email').value, city:document.getElementById('cli-cidade').value || "", cidade:document.getElementById('cli-cidade').value, address:document.getElementById('cli-endereco').value || "", endereco:document.getElementById('cli-endereco').value }; if(id) await updateDoc(doc(db,"clientes",id),d); else await addDoc(collection(db,"clientes"),d); document.getElementById('form-cliente').reset(); document.getElementById('cli-id').value=''; };
-        document.getElementById('form-atendente').onsubmit = async(e) => { e.preventDefault(); if(!currentPerms.cadastros.gravar) return; const id=document.getElementById('atend-id').value, d={ nome:document.getElementById('atend-nome').value, email:document.getElementById('atend-email').value, whats:document.getElementById('atend-whats').value, depto:document.getElementById('atend-depto').value }; if(id) await updateDoc(doc(db,"atendentes",id),d); else await addDoc(collection(db,"atendentes"),d); document.getElementById('form-atendente').reset(); document.getElementById('atend-id').value=''; };
+        
+        // --- FUNÇÃO DE SALVAR ATENDENTE ATUALIZADA (Validação do PCP Implementada) ---
+        document.getElementById('form-atendente').onsubmit = async(e) => { 
+            e.preventDefault(); 
+            if(!currentPerms.cadastros.gravar) return; 
+            
+            const id = document.getElementById('atend-id').value;
+            const emailDigitado = document.getElementById('atend-email').value;
+
+            // BLOQUEIO DE SEGURANÇA SE ALTERAR O E-MAIL
+            if (id) {
+                const atendenteOriginal = listaAtendentes.find(x => x.id === id);
+                if (atendenteOriginal && atendenteOriginal.email && emailDigitado.trim().toLowerCase() !== atendenteOriginal.email.trim().toLowerCase()) {
+                    const temVinculo = await checarVinculoNoPCP(atendenteOriginal.email);
+                    if (temVinculo) {
+                        alert(`BLOQUEIO DE SEGURANÇA:\n\nO e-mail original (${atendenteOriginal.email}) já possui histórico de obras no PCP.\n\nVocê pode alterar o NOME e o DEPARTAMENTO deste colaborador, mas o e-mail deve permanecer o mesmo para não quebrar o histórico de produção.`);
+                        return; // Interrompe o salvamento
+                    }
+                }
+            }
+
+            const deptosSelecionados = [];
+            document.querySelectorAll('input[name="atend-deptos"]:checked').forEach(chk => {
+                deptosSelecionados.push(chk.value);
+            });
+
+            const d = { 
+                nome: document.getElementById('atend-nome').value, 
+                email: emailDigitado, 
+                whats: document.getElementById('atend-whats').value, 
+                depto: deptosSelecionados 
+            }; 
+
+            try {
+                if(id) await updateDoc(doc(db,"atendentes",id),d); 
+                else await addDoc(collection(db,"atendentes"),d); 
+                
+                document.getElementById('form-atendente').reset(); 
+                document.querySelectorAll('input[name="atend-deptos"]').forEach(chk => chk.checked = false);
+                document.getElementById('atend-id').value=''; 
+                document.getElementById('btn-save-atendente').innerText = "Salvar";
+            } catch (err) {
+                alert("Erro ao salvar atendente: " + err.message);
+            }
+        };
         
         document.getElementById('form-lead-main').onsubmit = async(e) => { 
             e.preventDefault(); if(!currentPerms.leads.gravar) return; const id=document.getElementById('lead-id').value, sel=document.getElementById('lead-cliente'), origem = document.getElementById('lead-origem').value, indicacao = document.getElementById('lead-indicacao').value;
@@ -2373,7 +2473,7 @@
                         await updateDoc(doc(db, "apontamentos", existingDoc.id), {
                             id_externo: idExterno,
                             status: statusApt,
-                            historico_trabalhos: trabajos,
+                            historico_trabalhos: trabalhos,
                             updated_at: serverTimestamp()
                         });
                     } else {
