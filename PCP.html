@@ -438,22 +438,25 @@
                             // o valor antigo (0%) antes mesmo do clique em SALVAR, fazendo o progresso 'zerar'.
                             if (!subLeitura && Array.isArray(atualizado.materiais)) {
                                 atualizado.materiais.forEach((m, idx) => {
+                                    // Só preserva o valor se o campo existir, estiver habilitado e for o
+                                    // usuário responsável quem está editando — nunca mexe na trava de
+                                    // responsável por etapa, apenas evita perder o que já foi digitado.
                                     const pctEl = document.getElementById(`mat-pct-${idx}`);
-                                    if (pctEl && pctEl.value !== '') {
+                                    if (pctEl && !pctEl.disabled && pctEl.value !== '') {
                                         const vDigitado = parseInt(pctEl.value) || 0;
                                         if (fAlvo === 'COMPRA') m.compra_pct = vDigitado;
                                         if (fAlvo === 'RECEBIMENTO') m.receb_pct = vDigitado;
                                         if (fAlvo === 'PRODUCAO') m.prod_pct = vDigitado;
                                     }
                                     const obsEl = document.getElementById(`mat-obs-${idx}`);
-                                    if (obsEl) {
+                                    if (obsEl && !obsEl.disabled) {
                                         if (fAlvo === 'LISTA') m.lista_obs = obsEl.value;
                                         if (fAlvo === 'COMPRA') m.compra_obs = obsEl.value;
                                         if (fAlvo === 'RECEBIMENTO') m.receb_obs = obsEl.value;
                                         if (fAlvo === 'PRODUCAO') m.prod_obs = obsEl.value;
                                     }
                                     const prevEl = document.getElementById(`mat-prev-${idx}`);
-                                    if (prevEl && fAlvo === 'COMPRA') {
+                                    if (prevEl && !prevEl.disabled && fAlvo === 'COMPRA') {
                                         m.prev_recebimento = prevEl.value;
                                     }
                                 });
@@ -932,12 +935,10 @@
 
                 await updateDoc(doc(db, "pcp_processos", procAtual.id), payload);
 
-                // CORREÇÃO: atualiza o estado local e re-renderiza imediatamente com os valores
-                // recém-salvos (ex: % de progresso), sem depender do round-trip do listener em
-                // tempo real para confirmar visualmente que o dado foi persistido.
+                // CORREÇÃO: mantém o objeto local em memória consistente com o que acabou de ser
+                // salvo (sem forçar nova renderização aqui — quem re-renderiza é o listener em
+                // tempo real, respeitando a trava de responsável de cada etapa, como já era antes).
                 procAtual.materiais = mats;
-                let fAlvoSalvo = procAtual.etapa_modal_carregada;
-                renderMateriaisProcessoLocal(fAlvoSalvo === 'LISTA' ? 'lista' : (fAlvoSalvo === 'COMPRA' ? 'compra' : (fAlvoSalvo === 'RECEBIMENTO' ? 'receb' : 'prod')), false);
 
                 alert("Dados salvos com sucesso!");
             } catch(e){
