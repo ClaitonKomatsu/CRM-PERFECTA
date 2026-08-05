@@ -50,7 +50,7 @@
         
         .col-novo { background: #6c757d; } .col-contatado { background: #17a2b8; } 
         .col-orcamento { background: #ffc107; color:#333 !important; } .col-enviado { background: #6f42c1; } .col-negociacao { background: #fd7e14; }
-        .col-fechado { background: #28a745; } .col-perdido { background: #dc3545; }
+        .col-fechado { background: #28a745; } .col-producao { background: var(--teal); } .col-perdido { background: #dc3545; }
 
         .card { background: white; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; border-left: 5px solid #ccc; position: relative; }
         .card-blue { background-color: #e3f2fd !important; border-left-color: #2196f3 !important; }
@@ -206,6 +206,7 @@
                 <label><input type="checkbox" id="f-col-enviado" checked onchange="toggleFunnelCol('enviado')"> Enviado</label>
                 <label><input type="checkbox" id="f-col-negociacao" checked onchange="toggleFunnelCol('negociacao')"> Negociação</label>
                 <label><input type="checkbox" id="f-col-fechado" checked onchange="toggleFunnelCol('fechado')"> Fechados</label>
+                <label><input type="checkbox" id="f-col-producao" checked onchange="toggleFunnelCol('producao')"> Produção (PCP)</label>
                 <label><input type="checkbox" id="f-col-perdido" checked onchange="toggleFunnelCol('perdido')"> Perdidos</label>
             </div>
         </div>
@@ -216,6 +217,7 @@
             <div id="w-enviado" class="column"><div class="column-header col-enviado">Enviado <span id="c-enviado">0</span></div><div class="column-body" id="list-enviado"></div></div>
             <div id="w-negociacao" class="column"><div class="column-header col-negociacao">Negociação <span id="c-negociacao">0</span></div><div class="column-body" id="list-negociacao"></div></div>
             <div id="w-fechado" class="column"><div class="column-header col-fechado">Fechados <span id="c-fechado">0</span></div><div class="column-body" id="list-fechado"></div></div>
+            <div id="w-producao" class="column"><div class="column-header col-producao">Produção (PCP) <span id="c-producao">0</span></div><div class="column-body" id="list-producao"></div></div>
             <div id="w-perdido" class="column"><div class="column-header col-perdido">Perdidos <span id="c-perdido">0</span></div><div class="column-body" id="list-perdido"></div></div>
         </div>
     </section>
@@ -593,6 +595,7 @@
                                 <option value="todos">Todas</option>
                                 <option value="contatado">Contato</option>
                                 <option value="fechado">Fechado</option>
+                                <option value="producao">Produção (PCP)</option>
                                 <option value="negociacao">Negociação</option>
                                 <option value="novo">Novo</option>
                                 <option value="orcamento">Em Orçamento</option>
@@ -882,7 +885,7 @@
 
         Chart.defaults.plugins.datalabels = { display: false };
 
-        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], listaProcessos=[], leadAtual=null, starFilters=[1,2,3,4,5];
+        let listaLeads=[], listaClientes=[], listaAtendentes=[], listaOrcamentos=[], listaUsuarios=[], listaProcessos=[], listaPcpProcessos=[], leadAtual=null, starFilters=[1,2,3,4,5];
         let chartOrigem=null, chartLeadsDay=null, chartPerf=null, chartStageTime=null, chartCycleTime=null;
         let leadSortAsc = false;
         
@@ -1457,7 +1460,7 @@
                 
                 listenersAtivos.forEach(unsub => unsub()); 
                 listenersAtivos = [];
-                listaLeads=[]; listaClientes=[]; listaAtendentes=[]; listaOrcamentos=[]; listaUsuarios=[]; listaProcessos=[];
+                listaLeads=[]; listaClientes=[]; listaAtendentes=[]; listaOrcamentos=[]; listaUsuarios=[]; listaProcessos=[]; listaPcpProcessos=[];
                 currentUser = null; currentPerms = null;
                 document.getElementById('form-login').reset();
             }
@@ -1542,6 +1545,14 @@
                 }));
             }
 
+            if (currentPerms.leads.ver || currentPerms.funil_dash.ver || currentPerms.funil_dash.ver_dash) {
+                listenersAtivos.push(onSnapshot(collection(db, "pcp_processos"), (snap) => {
+                    listaPcpProcessos = snap.docs.map(d => ({...d.data(), id: d.id}));
+                    if(currentPerms.funil_dash.ver) renderFunnel();
+                    if(currentPerms.leads.ver) renderTableLeads();
+                }));
+            }
+
             if (currentUser && currentUser.perfil === 'admin') {
                 listenersAtivos.push(onSnapshot(collection(db, "usuarios"), (snap) => {
                     listaUsuarios = snap.docs.map(d => ({...d.data(), uid: d.id}));
@@ -1571,9 +1582,11 @@
             });
         };
 
+        window.temPcpAtivo = (leadId) => listaPcpProcessos.some(p => p.lead_id === leadId);
+
         window.renderFunnel = () => {
             if(!currentPerms || !currentPerms.funil_dash.ver) return;
-            const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', enviado:'list-enviado', negociacao:'list-negociacao', fechado:'list-fechado', perdido:'list-perdido'};
+            const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', enviado:'list-enviado', negociacao:'list-negociacao', fechado:'list-fechado', producao:'list-producao', perdido:'list-perdido'};
             Object.values(cols).forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = ''; });
             
             const atend = document.getElementById('f-funil-atend').value;
@@ -1617,7 +1630,8 @@
                     let cor = '';
                     if(h.data_programada && !h.data_realizada) { cor = new Date(h.data_programada) < new Date() ? 'card-red' : 'card-blue'; } else if(h.data_realizada) cor = 'card-green';
                     
-                    const div = document.getElementById(cols[h.etapa]);
+                    const etapaEfetiva = (h.etapa === 'fechado' && temPcpAtivo(lead.id)) ? 'producao' : h.etapa;
+                    const div = document.getElementById(cols[etapaEfetiva]);
                     if(div) {
                         div.innerHTML += `
                         <div class="card ${cor}" onclick="if(${currentPerms.leads.ver}) editarLead('${lead.id}')">
@@ -1834,12 +1848,14 @@
                 const matchCli = (l.nome_cliente_cache || "").toLowerCase().includes(fCli);
                 const matchAtend = fAtend === 'todos' || lastH.atendente === fAtend;
                 const matchOrigem = fOrigem === 'todos' || l.origem === fOrigem;
-                const matchEtapa = fEtapa === 'todos' || lastH.etapa === fEtapa;
+                const etapaEfetivaFiltro = (lastH.etapa === 'fechado' && temPcpAtivo(l.id)) ? 'producao' : lastH.etapa;
+                const matchEtapa = fEtapa === 'todos' || etapaEfetivaFiltro === fEtapa;
                 return matchCli && matchAtend && matchOrigem && matchEtapa;
             });
             leadsFiltered.sort((a, b) => leadSortAsc ? (a.nome_cliente_cache || "").localeCompare(b.nome_cliente_cache || "") : (b.nome_cliente_cache || "").localeCompare(a.nome_cliente_cache || ""));
             leadsFiltered.forEach(l => {
-                const etapa = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const etapaRaw = (l.historico && l.historico.length) ? l.historico[l.historico.length-1].etapa : 'novo';
+                const etapa = (etapaRaw === 'fechado' && temPcpAtivo(l.id)) ? 'Produção (PCP)' : etapaRaw;
                 const desde = l.created_at ? new Date(l.created_at.toDate()).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
                 const cliente = listaClientes.find(c => c.id === l.cliente_id);
                 const tel = (cliente && cliente.telefone) ? cliente.telefone.replace(/\D/g, '') : '';
