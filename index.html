@@ -1588,6 +1588,7 @@
             if(!currentPerms || !currentPerms.funil_dash.ver) return;
             const cols = {novo:'list-novo', contatado:'list-contatado', orcamento:'list-orcamento', enviado:'list-enviado', negociacao:'list-negociacao', fechado:'list-fechado', producao:'list-producao', perdido:'list-perdido'};
             Object.values(cols).forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = ''; });
+            const producaoCardsPorLead = new Map();
             
             const atend = document.getElementById('f-funil-atend').value;
             const dtIni = document.getElementById('f-funil-ini').value, dtFim = document.getElementById('f-funil-fim').value, fReal = document.getElementById('f-funil-real').value;
@@ -1615,9 +1616,12 @@
                 itemsToProcess.forEach(h => {
                     if(atend !== 'todos' && h.atendente !== atend) return;
                     if(h.temperatura && !starFilters.includes(parseInt(h.temperatura))) return;
-                    if(fReal === 'com' && !h.data_realizada) return;
-                    if(fReal === 'sem' && h.data_realizada) return;
-                    if(dtIni || dtFim) { if(!h.data_programada) return; const pDate = h.data_programada.split('T')[0]; if(dtIni && pDate < dtIni) return; if(dtFim && pDate > dtFim) return; }
+                    const etapaEfetivaPreFiltro = (h.etapa === 'fechado' && temPcpAtivo(lead.id)) ? 'producao' : h.etapa;
+                    if(etapaEfetivaPreFiltro !== 'producao') {
+                        if(fReal === 'com' && !h.data_realizada) return;
+                        if(fReal === 'sem' && h.data_realizada) return;
+                        if(dtIni || dtFim) { if(!h.data_programada) return; const pDate = h.data_programada.split('T')[0]; if(dtIni && pDate < dtIni) return; if(dtFim && pDate > dtFim) return; }
+                    }
                     
                     let statusOrcamentoStr = "";
                     const orc = listaOrcamentos.find(o => o.lead_id === lead.id);
@@ -1630,10 +1634,7 @@
                     let cor = '';
                     if(h.data_programada && !h.data_realizada) { cor = new Date(h.data_programada) < new Date() ? 'card-red' : 'card-blue'; } else if(h.data_realizada) cor = 'card-green';
                     
-                    const etapaEfetiva = (h.etapa === 'fechado' && temPcpAtivo(lead.id)) ? 'producao' : h.etapa;
-                    const div = document.getElementById(cols[etapaEfetiva]);
-                    if(div) {
-                        div.innerHTML += `
+                    const cardHtml = `
                         <div class="card ${cor}" onclick="if(${currentPerms.leads.ver}) editarLead('${lead.id}')">
                             <span class="card-stars">${h.temperatura ? "⭐".repeat(h.temperatura) : ""}</span>
                             <span class="card-title">${lead.nome_cliente_cache}</span>
@@ -1645,9 +1646,16 @@
                                 <b>Real:</b> ${formatBR(h.data_realizada)}${statusOrcamentoStr ? '<br>'+statusOrcamentoStr : ''}
                             </div>
                         </div>`;
+                    if (etapaEfetivaPreFiltro === 'producao') {
+                        producaoCardsPorLead.set(lead.id, cardHtml);
+                    } else {
+                        const div = document.getElementById(cols[etapaEfetivaPreFiltro]);
+                        if(div) div.innerHTML += cardHtml;
                     }
                 });
             });
+            const divProducao = document.getElementById(cols.producao);
+            if (divProducao) { producaoCardsPorLead.forEach(html => { divProducao.innerHTML += html; }); }
             Object.keys(cols).forEach(key => { const count = document.getElementById(cols[key])?.children.length || 0; const badge = document.getElementById('c-' + key); if(badge) badge.innerText = count; });
         };
 
