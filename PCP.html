@@ -296,6 +296,10 @@
                     <label>Qtd FOLHAS</label>
                     <input type="number" min="0" id="mod-structural-folhas" onchange="window.salvarEstruturaisGlobais()">
                 </div>
+                <div>
+                    <label>COR</label>
+                    <input type="text" id="mod-structural-cor" onchange="window.salvarEstruturaisGlobais()">
+                </div>
             </div>
 
             <div style="margin-top:8px; border-top:1px dashed #ddd; padding-top:8px; display: flex; gap: 15px; align-items: flex-end;" id="mod-bloco-medicao">
@@ -921,6 +925,7 @@
                     </div>
                     <div style="font-size:0.85em; color:#555; display:flex; gap:15px; margin-bottom:5px; flex-wrap:wrap;">
                         <span><b>Tipo:</b> ${p.tipo}</span>
+                        <span><b>Cor:</b> ${p.cor || '-'}</span>
                         <span><b>Peças Totais:</b> ${p.qtd_pecas || 0}</span>
                         <span><b>Marcos:</b> ${mTotal}</span>
                         <span><b>Folhas:</b> ${fTotal}</span>
@@ -1041,8 +1046,9 @@
             if(!procAtual || usuarioRestritoProducao) return;
             const mVal = parseInt(document.getElementById('mod-structural-marcos').value) || 0;
             const fVal = parseInt(document.getElementById('mod-structural-folhas').value) || 0;
+            const corVal = document.getElementById('mod-structural-cor').value.trim();
             try {
-                await updateDoc(doc(db, "pcp_processos", procAtual.id), { qtd_marcos: mVal, qtd_folhas: fVal });
+                await updateDoc(doc(db, "pcp_processos", procAtual.id), { qtd_marcos: mVal, qtd_folhas: fVal, cor: corVal });
             } catch(e) { console.error("Erro ao salvar dados de estrutura: ", e); }
         };
 
@@ -1075,6 +1081,9 @@
             inpFolhas.value = procAtual.qtd_folhas || 0;
             inpMarcos.disabled = apenasLeitura;
             inpFolhas.disabled = apenasLeitura;
+            const inpCor = document.getElementById('mod-structural-cor');
+            inpCor.value = procAtual.cor || '';
+            inpCor.disabled = apenasLeitura;
 
             const inputMedRealizada = document.getElementById('mod-medicao-realizada');
             inputMedRealizada.value = procAtual.medicao_realizada || "";
