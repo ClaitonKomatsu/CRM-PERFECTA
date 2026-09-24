@@ -431,6 +431,7 @@
                         <div><label>Margem Especial (%)</label><input type="text" id="lead-pvc-margem-especial" class="mask-percent"></div>
                         <div><label>Valor Orçamento (R$)</label><input type="text" id="lead-pvc-valor-orcamento" class="mask-currency"></div>
                         <div><label>Valor Pedido (R$)</label><input type="text" id="lead-pvc-valor-pedido" class="mask-currency"></div>
+                        <div><label>COR</label><input type="text" id="lead-pvc-cor"></div>
                     </div>
 
                     <div class="obra-section alu-bg">
@@ -441,6 +442,7 @@
                         <div><label>Margem Especial (%)</label><input type="text" id="lead-alu-margem-especial" class="mask-percent"></div>
                         <div><label>Valor Orçamento (R$)</label><input type="text" id="lead-alu-valor-orcamento" class="mask-currency"></div>
                         <div><label>Valor Pedido (R$)</label><input type="text" id="lead-alu-valor-pedido" class="mask-currency"></div>
+                        <div><label>COR</label><input type="text" id="lead-alu-cor"></div>
                     </div>
 
                     <label>Previsão Medição</label><input type="date" id="lead-medicao">
@@ -1337,6 +1339,7 @@
                         versao: versaoPvcProxima,
                         tipo: "PVC",
                         qtd_pecas: pvcPecas,
+                        cor: leadAtual.pvc_cor || '',
                         lista: { atendente: atendPvc, inicio: new Date().toISOString(), fim: null }
                     });
                     statusMensagemArr.push(`PVC (v${versaoPvcProxima})`);
@@ -1352,6 +1355,7 @@
                         versao: versaoAluProxima,
                         tipo: "ALUMÍNIO",
                         qtd_pecas: aluPecas,
+                        cor: leadAtual.alu_cor || '',
                         lista: { atendente: atendAlu, inicio: new Date().toISOString(), fim: null }
                     });
                     statusMensagemArr.push(`Alumínio (v${versaoAluProxima})`);
@@ -2038,7 +2042,7 @@
             const d={ 
                 cliente_id:sel.value, nome_cliente_cache:sel.options[sel.selectedIndex].text, origem:origem, indicacao_id: indicacao, 
                 pvc_metragem: document.getElementById('lead-pvc-metragem').value, pvc_pecas: document.getElementById('lead-pvc-pecas').value, 
-                pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, 
+                pvc_margem_padrao: document.getElementById('lead-pvc-margem-padrao').value, pvc_margem_especial: document.getElementById('lead-pvc-margem-especial').value, pvc_valor_orcamento: document.getElementById('lead-pvc-valor-orcamento').value, pvc_valor_pedido: document.getElementById('lead-pvc-valor-pedido').value, pvc_cor: document.getElementById('lead-pvc-cor').value, alu_metragem: document.getElementById('lead-alu-metragem').value, alu_pecas: document.getElementById('lead-alu-pecas').value, alu_margem_padrao: document.getElementById('lead-alu-margem-padrao').value, alu_margem_especial: document.getElementById('lead-alu-margem-especial').value, alu_valor_orcamento: document.getElementById('lead-alu-valor-orcamento').value, alu_valor_pedido: document.getElementById('lead-alu-valor-pedido').value, alu_cor: document.getElementById('lead-alu-cor').value, 
                 medicao: document.getElementById('lead-medicao').value,
                 previsao:document.getElementById('lead-previsao').value, construtora_id: document.getElementById('lead-construtora').value, adm_obra_id: document.getElementById('lead-adm-obra').value, arquiteto_id: document.getElementById('lead-arquiteto').value, responsavel_id: document.getElementById('lead-responsavel').value, rt: document.getElementById('lead-rt').value, updated_at:serverTimestamp() 
             }; 
@@ -2050,8 +2054,8 @@
         window.editarLead = (id) => { 
             leadAtual = listaLeads.find(l => l.id === id); switchView('leads'); document.getElementById('lead-id').value = id; 
             document.getElementById('lead-cliente').value = leadAtual.cliente_id; showInfo('cliente', leadAtual.cliente_id); document.getElementById('lead-origem').value = leadAtual.origem; document.getElementById('lead-indicacao').value = leadAtual.indicacao_id || ''; showInfo('indicacao', leadAtual.indicacao_id);
-            document.getElementById('lead-pvc-metragem').value = leadAtual.pvc_metragem || ''; document.getElementById('lead-pvc-pecas').value = leadAtual.pvc_pecas || ''; document.getElementById('lead-pvc-margem-padrao').value = leadAtual.pvc_margem_padrao || ''; document.getElementById('lead-pvc-margem-especial').value = leadAtual.pvc_margem_especial || ''; document.getElementById('lead-pvc-valor-orcamento').value = leadAtual.pvc_valor_orcamento || ''; document.getElementById('lead-pvc-valor-pedido').value = leadAtual.pvc_valor_pedido || '';
-            document.getElementById('lead-alu-metragem').value = leadAtual.alu_metragem || ''; document.getElementById('lead-alu-pecas').value = leadAtual.alu_pecas || ''; document.getElementById('lead-alu-margem-padrao').value = leadAtual.alu_margem_padrao || ''; document.getElementById('lead-alu-margem-especial').value = leadAtual.alu_margem_especial || ''; document.getElementById('lead-alu-valor-orcamento').value = leadAtual.alu_valor_orcamento || ''; document.getElementById('lead-alu-valor-pedido').value = leadAtual.alu_valor_pedido || '';
+            document.getElementById('lead-pvc-metragem').value = leadAtual.pvc_metragem || ''; document.getElementById('lead-pvc-pecas').value = leadAtual.pvc_pecas || ''; document.getElementById('lead-pvc-margem-padrao').value = leadAtual.pvc_margem_padrao || ''; document.getElementById('lead-pvc-margem-especial').value = leadAtual.pvc_margem_especial || ''; document.getElementById('lead-pvc-valor-orcamento').value = leadAtual.pvc_valor_orcamento || ''; document.getElementById('lead-pvc-valor-pedido').value = leadAtual.pvc_valor_pedido || ''; document.getElementById('lead-pvc-cor').value = leadAtual.pvc_cor || '';
+            document.getElementById('lead-alu-metragem').value = leadAtual.alu_metragem || ''; document.getElementById('lead-alu-pecas').value = leadAtual.alu_pecas || ''; document.getElementById('lead-alu-margem-padrao').value = leadAtual.alu_margem_padrao || ''; document.getElementById('lead-alu-margem-especial').value = leadAtual.alu_margem_especial || ''; document.getElementById('lead-alu-valor-orcamento').value = leadAtual.alu_valor_orcamento || ''; document.getElementById('lead-alu-valor-pedido').value = leadAtual.alu_valor_pedido || ''; document.getElementById('lead-alu-cor').value = leadAtual.alu_cor || '';
             document.getElementById('lead-medicao').value = leadAtual.medicao || '';
             document.getElementById('lead-previsao').value = leadAtual.previsao || ''; document.getElementById('lead-construtora').value = leadAtual.construtora_id || ''; document.getElementById('lead-adm-obra').value = leadAtual.adm_obra_id || ''; document.getElementById('lead-arquiteto').value = leadAtual.arquiteto_id || ''; document.getElementById('lead-responsavel').value = leadAtual.responsavel_id || '';
             document.getElementById('lead-rt').value = leadAtual.rt || '';
